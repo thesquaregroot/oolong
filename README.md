@@ -44,3 +44,11 @@ like.
        the memory is released (destructors called)
  - Templates (not generics)
 
+### Questions
+ - Virtual by default?
+   - The C++ approach is more efficient
+   - The Java approach is more usable (leaning this way)
+ - Distinguish between interfaces, abstract classes, and classes?
+   - The C++ approach is more usable (leaning this way)
+   - The Java approach is more explicit
+
