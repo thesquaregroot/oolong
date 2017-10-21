@@ -1,7 +1,0 @@
-
-import io;
-
-function main(parameters: Array) -> Integer {
-    io.print("Hello, world!);
-}
-

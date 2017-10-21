@@ -1,0 +1,7 @@
+
+import io;
+
+function main(parameters: Array<String>) -> Integer {
+    io.print("Hello, world!");
+}
+

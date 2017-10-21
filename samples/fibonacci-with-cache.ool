@@ -1,0 +1,36 @@
+
+import io;
+
+type Fibonacci {
+    contruct() {
+        this._cache = List<Integer>();
+        _cache.add(1); // fib(0)
+        _cache.add(1); // fib(1)
+        _cache.add(2); // fib(2)
+        _cache.add(3); // fib(3)
+        _cache.add(5); // fib(4)
+    }
+
+    function get(readonly Integer n) -> Integer {
+        if (n < 0) {
+            throw new InvalidArgumentException("Negative indexes are not allowed.");
+        }
+        if (n < _cache.size()) {
+            return _cache[n];
+        } else {
+            for (int i=_cache.size(); i<=n; i++) {
+                _cache.add(_cache[i-1] + _cache[i-2]);
+            }
+            return _cache[n];
+        }
+    }
+}
+
+function main(parameters: Array<String>) -> Integer {
+    let fibonacci = Fibonacci();
+
+    io.printLine(fibonacci.get(10));
+    io.printLine(fibonacci.get(100));
+    io.printLine(fibonacci.get(200));
+}
+
