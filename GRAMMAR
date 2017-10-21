@@ -1,0 +1,23 @@
+### This is an incomplete rough idea, highly subject to change
+
+<type-declaration>          := type <identifier> <inheritance-specifier> { <method-definition-list> }
+
+<inheritance-specifier>     := is a <parent-type>
+                             | is an <parent-type>
+                             | <empty>
+
+<function-declaration>      := function <function-definition>
+
+<function-definition>       := <identifier> ( <argument-list> ) -> <return-type> { <statement-list> }
+
+<method-definition-list>    := <method-definition> <method-definition-list>
+                             | <method-definition>
+
+<method-definition>         := <access-modifier-list> <function-definition>
+
+<statement-list>            := <statement> ; <statement-list>
+                             | <empty>
+
+<statement>                 := <l-value> = <r-value>
+                             | return <r-value>
+
