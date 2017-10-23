@@ -1,23 +1,39 @@
-### This is an incomplete rough idea, highly subject to change
+### This is an incomplete rough idea, used for building the bison AST
 
-<type-declaration>          := type <identifier> <inheritance-specifier> { <method-definition-list> }
-
-<inheritance-specifier>     := is a <parent-type>
-                             | is an <parent-type>
-                             | <empty>
-
-<function-declaration>      := function <function-definition>
-
-<function-definition>       := <identifier> ( <argument-list> ) -> <return-type> { <statement-list> }
-
-<method-definition-list>    := <method-definition> <method-definition-list>
-                             | <method-definition>
-
-<method-definition>         := <access-modifier-list> <function-definition>
+<program>                   := <statement-list>
 
 <statement-list>            := <statement> ; <statement-list>
                              | <empty>
 
-<statement>                 := <l-value> = <r-value>
-                             | return <r-value>
+<statement>                 := <function-declaration>
+                             | <variable-declaration> ;
+                             | <variable-declaration> = <expression> ;
+                             | <identifier> = <expression> ;
+                             | <expression> ;
+                             | return <expression> ;
+                             | <block>
+
+<function-declaration>      := function <identifier> ( <function-delcaration-argument-list> ) -> <return-type> <block>
+
+<function-declaration
+            -argument-list> := <function-declaration-argument> , <function-declaration-argument-list>
+                             | <function-declaration-argument>
+                             | <empty>
+
+<function-declartion
+                 -argument> := <variable-declaration>
+
+
+<block>                     := { <statement-list> }
+
+<expression>                := <expression> <binary-operator> <expression>
+                             | ( <expression> )
+                             | <identifier> ( <argument-list> )
+                             | <identifier>
+                             | <literal>
+
+<argument-list>             := <expression> , <argument-list>
+                             | <empty>
+
+<variable-declaration>      := <identifier> : <type>
 

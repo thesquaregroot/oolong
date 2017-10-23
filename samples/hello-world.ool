@@ -1,7 +1,7 @@
 
 import io;
 
-function main(parameters: Array<String>) -> Integer {
+function main() : Integer {
     io.print("Hello, world!");
 }
 

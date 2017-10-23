@@ -30,3 +30,9 @@
 *.exe
 *.out
 *.app
+
+# Generated Files
+src/parser.cpp
+src/parser.hpp
+src/tokens.cpp
+

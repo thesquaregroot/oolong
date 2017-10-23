@@ -11,7 +11,7 @@ type Fibonacci {
         _cache.add(5); // fib(4)
     }
 
-    function get(readonly Integer n) -> Integer {
+    function get(n: readonly Integer) : Integer {
         if (n < 0) {
             throw new InvalidArgumentException("Negative indexes are not allowed.");
         }
@@ -26,7 +26,7 @@ type Fibonacci {
     }
 }
 
-function main(parameters: Array<String>) -> Integer {
+function main(parameters: Array<String>) : Integer {
     let fibonacci = Fibonacci();
 
     io.printLine(fibonacci.get(10));
