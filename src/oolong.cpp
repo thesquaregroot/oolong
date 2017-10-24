@@ -13,9 +13,7 @@ extern ProgramNode* programNode;
 int main(int argc, char **argv) {
     yyparse();
 
-    InitializeNativeTarget();
-	InitializeNativeTargetAsmPrinter();
-	InitializeNativeTargetAsmParser();
+    cout << programNode << endl;
 
 	CodeGenerationContext context;
 	context.generateCode(*programNode);

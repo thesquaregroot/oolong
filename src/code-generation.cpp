@@ -23,7 +23,7 @@ using namespace llvm;
 
 CodeGenerationContext::CodeGenerationContext() {
     this->llvmContext = new LLVMContext();
-    this->module = new Module("main", *this->llvmContext);
+    this->module = new Module("main", *(this->llvmContext));
 }
 
 /* Compile the AST into a module */

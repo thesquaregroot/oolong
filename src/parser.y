@@ -1,3 +1,5 @@
+%define parse.error verbose
+
 %{
     #include "node.h"
     ProgramNode *programNode; /* the top level root node of our final AST */
