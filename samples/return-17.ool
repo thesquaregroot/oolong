@@ -1,0 +1,5 @@
+
+function main() : Integer {
+    return 17;
+}
+

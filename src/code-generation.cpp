@@ -31,23 +31,13 @@ void CodeGenerationContext::generateCode(ProgramNode& root)
 {
 	std::cout << "Generating code...\n";
 
-	/* Create the top level interpreter function to call as entry */
-	vector<Type*> argTypes;
-	FunctionType *ftype = FunctionType::get(Type::getVoidTy(*llvmContext), makeArrayRef(argTypes), false);
-	mainFunction = Function::Create(ftype, GlobalValue::InternalLinkage, "main", module);
-	BasicBlock *bblock = BasicBlock::Create(*llvmContext, "entry", mainFunction, 0);
-
-	/* Push a new variable/block context */
-	pushBlock(bblock);
-	root.generateCode(*this); /* emit bytecode for the toplevel block */
-	ReturnInst::Create(*llvmContext, bblock);
-	popBlock();
+	root.generateCode(*this);
 
 	/* Print the bytecode in a human-readable format
 	   to see if our program compiled properly
 	 */
 	std::cout << "Code is generated.\n";
-	// module->dump();
+	//module->dump();
 
 	legacy::PassManager pm;
 	pm.add(createPrintModulePass(outs()));
@@ -83,6 +73,10 @@ Module* CodeGenerationContext::getModule() {
 
 Function* CodeGenerationContext::getMainFunction() {
     return mainFunction;
+}
+
+void CodeGenerationContext::setMainFunction(Function* function) {
+    mainFunction = function;
 }
 
 void CodeGenerationContext::pushBlock(BasicBlock *block) {

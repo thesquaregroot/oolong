@@ -38,6 +38,7 @@ public:
     llvm::LLVMContext& getLLVMContext();
     llvm::Module* getModule();
     llvm::Function* getMainFunction();
+    void setMainFunction(llvm::Function* function);
     void pushBlock(llvm::BasicBlock *block);
     void popBlock();
     void setCurrentReturnValue(llvm::Value *value);

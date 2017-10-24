@@ -1,6 +1,7 @@
 #ifndef NODE_H
 #define NODE_H
 
+#include <string>
 #include <iostream>
 #include <vector>
 #include <llvm/IR/Value.h>
@@ -24,7 +25,7 @@ class ProgramNode : public Node {
 public:
     ProgramNode() {}
 
-    StatementList* statements;
+    StatementList statements;
 
     virtual llvm::Value* generateCode(CodeGenerationContext& context);
 };

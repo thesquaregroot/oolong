@@ -32,6 +32,7 @@
 *.app
 
 # Generated Files
+oolong
 src/parser.cpp
 src/parser.hpp
 src/tokens.cpp

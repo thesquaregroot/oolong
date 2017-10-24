@@ -33,6 +33,29 @@ static Type *typeOf(const IdentifierNode& type, LLVMContext& llvmContext)
 	return Type::getVoidTy(llvmContext);
 }
 
+Value* ProgramNode::generateCode(CodeGenerationContext& context)
+{
+	StatementList::const_iterator it;
+	Value *last = NULL;
+	for (it = statements.begin(); it != statements.end(); it++) {
+		cout << "Generating code for " << typeid(**it).name() << endl;
+		last = (**it).generateCode(context);
+	}
+	cout << "Creating program." << endl;
+	return last;
+}
+
+
+Value* BooleanNode::generateCode(CodeGenerationContext& context)
+{
+	cout << "Creating boolean: " << value << endl;
+    if (value) {
+        return ConstantInt::getTrue(context.getLLVMContext());
+    } else {
+        return ConstantInt::getFalse(context.getLLVMContext());
+    }
+}
+
 Value* IntegerNode::generateCode(CodeGenerationContext& context)
 {
 	cout << "Creating integer: " << value << endl;
@@ -43,6 +66,12 @@ Value* DoubleNode::generateCode(CodeGenerationContext& context)
 {
 	cout << "Creating double: " << value << endl;
 	return ConstantFP::get(Type::getDoubleTy(context.getLLVMContext()), value);
+}
+
+Value* StringNode::generateCode(CodeGenerationContext& context)
+{
+    cout << "Creating string: " << value << endl;
+    return ConstantDataArray::getString(context.getLLVMContext(), value, false);
 }
 
 Value* IdentifierNode::generateCode(CodeGenerationContext& context)
@@ -149,7 +178,11 @@ Value* FunctionDeclarationNode::generateCode(CodeGenerationContext& context)
 	}
 	FunctionType *ftype = FunctionType::get(typeOf(type, llvmContext), makeArrayRef(argTypes), false);
 	Function *function = Function::Create(ftype, GlobalValue::InternalLinkage, id.name.c_str(), context.getModule());
-	BasicBlock *bblock = BasicBlock::Create(llvmContext, "entry", function, 0);
+    if (id.name == "main") {
+        context.setMainFunction(function);
+    }
+
+    BasicBlock *bblock = BasicBlock::Create(llvmContext, "entry", function, 0);
 
 	context.pushBlock(bblock);
 

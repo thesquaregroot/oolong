@@ -45,6 +45,6 @@ extern "C" int yywrap() { return 0; }
 "/"                     return TOKEN(TOKEN_DIVIDE);
 ";"                     return TOKEN(TOKEN_SEMICOLON);
 ":"                     return TOKEN(TOKEN_COLON);
-.                       printf("Unknown token!n"); yyterminate();
+.                       printf("Unknown token!\n"); yyterminate();
 
 %%

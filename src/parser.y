@@ -3,7 +3,9 @@
     ProgramNode *programNode; /* the top level root node of our final AST */
 
     extern int yylex();
-    void yyerror(const char *s) { printf("ERROR: %sn", s); }
+    void yyerror(const char *s) {
+        printf("ERROR: %s\n", s);
+    }
 %}
 
 /* Represents the many different ways we can access our data */
@@ -64,7 +66,7 @@
 program : statement_list
             {
                 programNode = new ProgramNode();
-                programNode->statements = $1;
+                programNode->statements = *$1;
             }
         ;
 
