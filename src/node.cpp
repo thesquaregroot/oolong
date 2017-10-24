@@ -1,129 +1,175 @@
 #include "node.h"
 #include "code-generation.h"
 #include "parser.hpp"
+#include <llvm/IR/Module.h>
+#include <llvm/IR/Function.h>
+#include <llvm/IR/Type.h>
+#include <llvm/IR/DerivedTypes.h>
+#include <llvm/IR/LLVMContext.h>
+#include <llvm/IR/LegacyPassManager.h>
+#include <llvm/IR/Instructions.h>
+#include <llvm/IR/CallingConv.h>
+#include <llvm/IR/IRPrintingPasses.h>
+#include <llvm/IR/IRBuilder.h>
+#include <llvm/Bitcode/BitcodeReader.h>
+#include <llvm/Bitcode/BitcodeWriter.h>
+#include <llvm/Support/TargetSelect.h>
+#include <llvm/ExecutionEngine/ExecutionEngine.h>
+#include <llvm/ExecutionEngine/GenericValue.h>
+#include <llvm/Support/raw_ostream.h>
 
 using namespace std;
 using namespace llvm;
 
+/* Returns an LLVM type based on the identifier */
+static Type *typeOf(const IdentifierNode& type, LLVMContext& llvmContext)
+{
+	if (type.name.compare("int") == 0) {
+		return Type::getInt64Ty(llvmContext);
+	}
+	else if (type.name.compare("double") == 0) {
+		return Type::getDoubleTy(llvmContext);
+	}
+	return Type::getVoidTy(llvmContext);
+}
+
 Value* IntegerNode::generateCode(CodeGenerationContext& context)
 {
-    std::cout << "Creating integer: " << value << std::endl;
-    return ConstantInt::get(Type::getInt64Ty(getGlobalContext()), value, true);
+	cout << "Creating integer: " << value << endl;
+	return ConstantInt::get(Type::getInt64Ty(context.getLLVMContext()), value, true);
 }
 
 Value* DoubleNode::generateCode(CodeGenerationContext& context)
 {
-    std::cout << "Creating double: " << value << std::endl;
-    return ConstantFP::get(Type::getDoubleTy(getGlobalContext()), value);
+	cout << "Creating double: " << value << endl;
+	return ConstantFP::get(Type::getDoubleTy(context.getLLVMContext()), value);
 }
 
 Value* IdentifierNode::generateCode(CodeGenerationContext& context)
 {
-    std::cout << "Creating identifier reference: " << name << std::endl;
-    if (context.locals().find(name) == context.locals().end()) {
-        std::cerr << "undeclared variable " << name << std::endl;
-        return NULL;
-    }
-    return new LoadInst(context.locals()[name], "", false, context.currentBlock());
+	cout << "Creating identifier reference: " << name << endl;
+	if (context.locals().find(name) == context.locals().end()) {
+		cerr << "undeclared variable " << name << endl;
+		return NULL;
+	}
+	return new LoadInst(context.locals()[name], "", false, context.currentBlock());
 }
 
-Value* MethodCallNode::generateCode(CodeGenerationContext& context)
+Value* FunctionCallNode::generateCode(CodeGenerationContext& context)
 {
-    Function *function = context.module->getFunction(id.name.c_str());
-    if (function == NULL) {
-        std::cerr << "no such function " << id.name << std::endl;
-    }
-    std::vector<Value*> args;
-    ExpressionList::const_iterator it;
-    for (it = arguments.begin(); it != arguments.end(); it++) {
-        args.push_back((**it).generateCode(context));
-    }
-    CallInst *call = CallInst::Create(function, args.begin(), args.end(), "", context.currentBlock());
-    std::cout << "Creating method call: " << id.name << std::endl;
-    return call;
+	Function *function = context.getModule()->getFunction(id.name.c_str());
+	if (function == NULL) {
+		cerr << "no such function " << id.name << endl;
+	}
+	vector<Value*> args;
+	ExpressionList::const_iterator it;
+	for (it = arguments.begin(); it != arguments.end(); it++) {
+		args.push_back((**it).generateCode(context));
+	}
+	CallInst *call = CallInst::Create(function, makeArrayRef(args), "", context.currentBlock());
+	cout << "Creating function call: " << id.name << endl;
+	return call;
 }
 
 Value* BinaryOperatorNode::generateCode(CodeGenerationContext& context)
 {
-    std::cout << "Creating binary operation " << op << std::endl;
-    Instruction::BinaryOps instr;
-    switch (op) {
-        case TPLUS:     instr = Instruction::Add; goto math;
-        case TMIUSNode:    instr = Instruction::Sub; goto math;
-        case TMUL:      instr = Instruction::Mul; goto math;
-        case TDIV:      instr = Instruction::SDiv; goto math;
+	cout << "Creating binary operation " << operation << endl;
+	Instruction::BinaryOps instruction;
+	switch (operation) {
+		case TOKEN_PLUS: 	    instruction = Instruction::Add; goto math;
+		case TOKEN_MINUS: 	    instruction = Instruction::Sub; goto math;
+		case TOKEN_MULTIPLY:    instruction = Instruction::Mul; goto math;
+		case TOKEN_DIVIDE: 	    instruction = Instruction::SDiv; goto math;
 
-        /* TODO comparison */
-    }
+		/* TODO comparison */
+	}
 
-    return NULL;
+	return NULL;
 math:
-    return BinaryOperator::Create(instr, lhs.generateCode(context),
-        rhs.generateCode(context), "", context.currentBlock());
+	return BinaryOperator::Create(instruction, leftHandSide.generateCode(context), rightHandSide.generateCode(context), "", context.currentBlock());
 }
 
 Value* AssignmentNode::generateCode(CodeGenerationContext& context)
 {
-    std::cout << "Creating assignment for " << lhs.name << std::endl;
-    if (context.locals().find(lhs.name) == context.locals().end()) {
-        std::cerr << "undeclared variable " << lhs.name << std::endl;
-        return NULL;
-    }
-    return new StoreInst(rhs.generateCode(context), context.locals()[lhs.name], false, context.currentBlock());
+	cout << "Creating assignment for " << leftHandSide.name << endl;
+	if (context.locals().find(leftHandSide.name) == context.locals().end()) {
+		cerr << "undeclared variable " << leftHandSide.name << endl;
+		return NULL;
+	}
+	return new StoreInst(rightHandSide.generateCode(context), context.locals()[leftHandSide.name], false, context.currentBlock());
 }
 
 Value* BlockNode::generateCode(CodeGenerationContext& context)
 {
-    StatementList::const_iterator it;
-    Value *last = NULL;
-    for (it = statements.begin(); it != statements.end(); it++) {
-        std::cout << "Generating code for " << typeid(**it).name() << std::endl;
-        last = (**it).generateCode(context);
-    }
-    std::cout << "Creating block" << std::endl;
-    return last;
+	StatementList::const_iterator it;
+	Value *last = NULL;
+	for (it = statements.begin(); it != statements.end(); it++) {
+		cout << "Generating code for " << typeid(**it).name() << endl;
+		last = (**it).generateCode(context);
+	}
+	cout << "Creating block" << endl;
+	return last;
 }
 
 Value* ExpressionStatementNode::generateCode(CodeGenerationContext& context)
 {
-    std::cout << "Generating code for " << typeid(expression).name() << std::endl;
-    return expression.generateCode(context);
+	cout << "Generating code for " << typeid(expression).name() << endl;
+	return expression.generateCode(context);
+}
+
+Value* ReturnStatementNode::generateCode(CodeGenerationContext& context)
+{
+	cout << "Generating return code for " << typeid(expression).name() << endl;
+	Value *returnValue = expression.generateCode(context);
+	context.setCurrentReturnValue(returnValue);
+	return returnValue;
 }
 
 Value* VariableDeclarationNode::generateCode(CodeGenerationContext& context)
 {
-    std::cout << "Creating variable declaration " << type.name << " " << id.name << std::endl;
-    AllocaInst *alloc = new AllocaInst(typeOf(type), id.name.c_str(), context.currentBlock());
-    context.locals()[id.name] = alloc;
-    if (assignmentExpr != NULL) {
-        AssignmentNode assn(id, *assignmentExpr);
-        assn.generateCode(context);
-    }
-    return alloc;
+    LLVMContext& llvmContext = context.getLLVMContext();
+	cout << "Creating variable declaration " << type.name << " " << id.name << endl;
+    Type* identifierType = typeOf(type, llvmContext);
+	AllocaInst *alloc = new AllocaInst(identifierType, identifierType->getPointerAddressSpace(), id.name, context.currentBlock());
+	context.locals()[id.name] = alloc;
+	if (assignmentExpression != NULL) {
+		AssignmentNode assn(id, *assignmentExpression);
+		assn.generateCode(context);
+	}
+	return alloc;
 }
 
 Value* FunctionDeclarationNode::generateCode(CodeGenerationContext& context)
 {
-    vector<const Type*> argTypes;
-    VariableList::const_iterator it;
-    for (it = arguments.begin(); it != arguments.end(); it++) {
-        argTypes.push_back(typeOf((**it).type));
-    }
-    FunctionType *ftype = FunctionType::get(typeOf(type), argTypes, false);
-    Function *function = Function::Create(ftype, GlobalValue::InternalLinkage, id.name.c_str(), context.module);
-    BasicBlock *bblock = BasicBlock::Create(getGlobalContext(), "entry", function, 0);
+    LLVMContext& llvmContext = context.getLLVMContext();
+	vector<Type*> argTypes;
+	VariableList::const_iterator it;
+	for (it = arguments.begin(); it != arguments.end(); it++) {
+		argTypes.push_back(typeOf((**it).type, llvmContext));
+	}
+	FunctionType *ftype = FunctionType::get(typeOf(type, llvmContext), makeArrayRef(argTypes), false);
+	Function *function = Function::Create(ftype, GlobalValue::InternalLinkage, id.name.c_str(), context.getModule());
+	BasicBlock *bblock = BasicBlock::Create(llvmContext, "entry", function, 0);
 
-    context.pushBlock(bblock);
+	context.pushBlock(bblock);
 
-    for (it = arguments.begin(); it != arguments.end(); it++) {
-        (**it).generateCode(context);
-    }
+	Function::arg_iterator argsValues = function->arg_begin();
+    Value* argumentValue;
 
-    block.generateCode(context);
-    ReturnInst::Create(getGlobalContext(), bblock);
+	for (it = arguments.begin(); it != arguments.end(); it++) {
+		(**it).generateCode(context);
 
-    context.popBlock();
-    std::cout << "Creating function: " << id.name << std::endl;
-    return function;
+		argumentValue = &*argsValues++;
+		argumentValue->setName((*it)->id.name.c_str());
+        // don't need reference
+		new StoreInst(argumentValue, context.locals()[(*it)->id.name], false, bblock);
+	}
+
+	block.generateCode(context);
+	ReturnInst::Create(llvmContext, context.getCurrentReturnValue(), bblock);
+
+	context.popBlock();
+	cout << "Creating function: " << id.name << endl;
+	return function;
 }
 

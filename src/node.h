@@ -1,3 +1,6 @@
+#ifndef NODE_H
+#define NODE_H
+
 #include <iostream>
 #include <vector>
 #include <llvm/IR/Value.h>
@@ -159,4 +162,6 @@ public:
 
     virtual llvm::Value* generateCode(CodeGenerationContext& context);
 };
+
+#endif
 

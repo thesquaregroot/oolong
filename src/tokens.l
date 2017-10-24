@@ -1,3 +1,5 @@
+%option nounput
+
 %{
 #include <string>
 #include "node.h"
