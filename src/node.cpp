@@ -24,10 +24,10 @@ using namespace llvm;
 /* Returns an LLVM type based on the identifier */
 static Type *typeOf(const IdentifierNode& type, LLVMContext& llvmContext)
 {
-	if (type.name.compare("int") == 0) {
+	if (type.name.compare("Integer") == 0) {
 		return Type::getInt64Ty(llvmContext);
 	}
-	else if (type.name.compare("double") == 0) {
+	else if (type.name.compare("Double") == 0) {
 		return Type::getDoubleTy(llvmContext);
 	}
 	return Type::getVoidTy(llvmContext);
