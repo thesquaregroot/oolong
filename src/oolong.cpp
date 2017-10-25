@@ -11,9 +11,10 @@ extern int yyparse();
 extern ProgramNode* programNode;
 
 int main(int argc, char **argv) {
-    yyparse();
-
-    cout << programNode << endl;
+    int parseValue = yyparse();
+    if (parseValue > 0) {
+        return parseValue;
+    }
 
 	CodeGenerationContext context;
 	context.generateCode(*programNode);
