@@ -1,7 +1,10 @@
 %define parse.error verbose
+%define parse.trace true
 
 %{
+    #define YYDEBUG 1
     #include "node.h"
+    #include <stdio.h>
     ProgramNode *programNode; /* the top level root node of our final AST */
 
     extern int yylex();
