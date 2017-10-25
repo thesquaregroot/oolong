@@ -181,7 +181,6 @@ Value* FunctionDeclarationNode::generateCode(CodeGenerationContext& context)
     if (id.name == "main") {
         context.setMainFunction(function);
     }
-
     BasicBlock *bblock = BasicBlock::Create(llvmContext, "entry", function, 0);
 
 	context.pushBlock(bblock);

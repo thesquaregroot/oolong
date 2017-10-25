@@ -2,12 +2,13 @@
 #include "code-generation.h"
 #include "parser.hpp"
 #include <vector>
+#include <fstream>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Type.h>
 #include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/LLVMContext.h>
-#include <llvm/IR/LegacyPassManager.h>
+#include <llvm/IR/PassManager.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/CallingConv.h>
 #include <llvm/IR/IRPrintingPasses.h>
@@ -16,7 +17,7 @@
 #include <llvm/Bitcode/BitcodeWriter.h>
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
 #include <llvm/ExecutionEngine/GenericValue.h>
-#include <llvm/Support/raw_ostream.h>
+#include <llvm/Support/raw_os_ostream.h>
 
 using namespace std;
 using namespace llvm;
@@ -26,32 +27,25 @@ CodeGenerationContext::CodeGenerationContext() {
     this->module = new Module("main", *(this->llvmContext));
 }
 
-/* Compile the AST into a module */
+// Compile the AST into a module
 void CodeGenerationContext::generateCode(ProgramNode& root)
 {
-	std::cout << "Generating code...\n";
-
 	root.generateCode(*this);
 
-	/* Print the bytecode in a human-readable format
-	   to see if our program compiled properly
-	 */
-	std::cout << "Code is generated.\n";
-	//module->dump();
-
-	legacy::PassManager pm;
-	pm.add(createPrintModulePass(outs()));
-	pm.run(*module);
+    // print to file
+    ofstream outputFile("a.out");
+    raw_os_ostream output(outputFile);
+    module->print(output, nullptr);
 }
 
-/* Executes the AST by running the main function */
+// Executes the AST by running the main function
 GenericValue CodeGenerationContext::runCode() {
-	std::cout << "Running code...\n";
+	std::cout << "### EXECUTING CODE ###\n";
 	ExecutionEngine *ee = EngineBuilder( unique_ptr<Module>(module) ).create();
 	ee->finalizeObject();
 	vector<GenericValue> noargs;
 	GenericValue v = ee->runFunction(mainFunction, noargs);
-	std::cout << "Code was run.\n";
+	std::cout << "### CODE EXECUTED ###\n";
 	return v;
 }
 
