@@ -53,11 +53,10 @@
 %type <statementList> program statement_list
 %type <expression> expression literal_value
 %type <statement> statement function_declaration
-%type <identifier> identifier
+%type <identifier> identifier type
 %type <variableDeclaration> variable_declaration
 %type <variableDeclarationList> function_declaration_argument_list
 %type <expressionList> function_call_argument_list
-%type <string> type
 %type <token> comparison
 
 /* Operator precedence for mathematical operators */
@@ -222,19 +221,19 @@ function_call_argument_list : %empty
 
 type : TOKEN_BOOLEAN
         {
-            $$ = $1;
+            $$ = new IdentifierNode("Boolean");
         }
      | TOKEN_INTEGER
         {
-            $$ = $1;
+            $$ = new IdentifierNode("Integer");
         }
      | TOKEN_DOUBLE
         {
-            $$ = $1;
+            $$ = new IdentifierNode("Double");
         }
      | TOKEN_STRING
         {
-            $$ = $1;
+            $$ = new IdentifierNode("String");
         }
      ;
 

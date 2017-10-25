@@ -65,7 +65,7 @@ public:
 
 class StringNode : public ExpressionNode {
 public:
-    StringNode(std::string& value) : value(value) {}
+    StringNode(const std::string& value) : value(value) {}
 
     std::string value;
 
