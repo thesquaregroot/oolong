@@ -1,4 +1,4 @@
-# oolong
+# Oolong
 A programming language combining the usability of newer languages with the power
 of old ones.
 
@@ -16,16 +16,13 @@ like.
  - Implicit is better than redundant.
  - Simple is better than complex.
  - Complex is better than complicated.
- - Learn from old languages where the coincide.
+ - Learn from old languages where they coincide.
  - Learn from new languages where they innovate.
- - Disregard new languages where they don't.
  - Compile-time is your first code review.
  - Abbreviations should only occur where we would speak them.
  - "Danger" **isn't** a good reason to not include something.
  - "Magic" **is** a good reason to not include something.
  - Breaking changes stink but holding yourself back is worse.
- - Words are better than special characters.
- - Special characters are better than unclear words.
 
 ## Proposed Language Features
  - First-class functions
