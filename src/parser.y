@@ -11,6 +11,26 @@
     void yyerror(const char *s) {
         printf("ERROR: %s\n", s);
     }
+
+    void replaceAll(std::string& value, const std::string substring, const std::string replacement) {
+        size_t index = value.find(substring);
+        while (index != std::string::npos) {
+            // replace \" sequence with just "
+            value.replace(index, substring.length(), replacement);
+            // re-search starting at end of replacement
+            index = value.find("\\\"", index + replacement.length() - 1);
+        }
+    }
+
+    std::string interpretString(const std::string& input) {
+        // remove leading and trailing quotes
+        std::string value = input.substr(1, input.length()-2);
+        // un-escape any other quotes
+        replaceAll(value, "\\\"", "\"");
+        replaceAll(value, "\\n", "\n");
+        replaceAll(value, "\\r", "\r");
+        return value;
+    }
 %}
 
 /* Represents the many different ways we can access our data */
@@ -21,6 +41,7 @@
     ExpressionNode *expression;
     StatementNode *statement;
     IdentifierNode *identifier;
+    IdentifierList *identifierList;
     VariableDeclarationNode *variableDeclaration;
     std::vector<VariableDeclarationNode*> *variableDeclarationList;
     std::vector<ExpressionNode*> *expressionList;
@@ -35,13 +56,13 @@
 %token <string> TOKEN_IDENTIFIER
 %token <string> TOKEN_INTEGER TOKEN_DOUBLE TOKEN_STRING TOKEN_BOOLEAN
 %token <string> TOKEN_INTEGER_LITERAL TOKEN_DOUBLE_LITERAL TOKEN_STRING_LITERAL TOKEN_BOOLEAN_LITERAL
-%token <token> TOKEN_FUNCTION TOKEN_RETURN TOKEN_AND TOKEN_OR
+%token <token> TOKEN_FUNCTION TOKEN_IMPORT TOKEN_RETURN TOKEN_AND TOKEN_OR
 %token <token> TOKEN_EQUAL_TO TOKEN_NOT_EQUAL_TO TOKEN_LESS_THAN
 %token <token> TOKEN_LESS_THAN_OR_EQUAL_TO TOKEN_GREATER_THAN
 %token <token> TOKEN_GREATER_THAN_OR_EQUAL_TO TOKEN_ASSIGNMENT
 %token <token> TOKEN_LEFT_PARENTHESIS TOKEN_RIGHT_PARENTHESIS
 %token <token> TOKEN_LEFT_BRACE TOKEN_RIGHT_BRACE TOKEN_COMMA
-%token <token> TOKEN_DOT TOKEN_PLUS TOKEN_MINUS TOKEN_MULTIPLY
+%token <token> TOKEN_PERIOD TOKEN_PLUS TOKEN_MINUS TOKEN_MULTIPLY
 %token <token> TOKEN_DIVIDE TOKEN_SEMICOLON TOKEN_COLON
 
 /* Define the type of node our nonterminal symbols represent.
@@ -54,6 +75,7 @@
 %type <expression> expression literal_value
 %type <statement> statement function_declaration
 %type <identifier> identifier type
+%type <identifierList> reference
 %type <variableDeclaration> variable_declaration
 %type <variableDeclarationList> function_declaration_argument_list
 %type <expressionList> function_call_argument_list
@@ -90,7 +112,11 @@ statement_list : %empty
                     }
                ;
 
-statement : function_declaration
+statement : TOKEN_IMPORT reference TOKEN_SEMICOLON
+                {
+                    $$ = new ImportStatementNode(*$2);
+                }
+          | function_declaration
                 {
                     $$ = $1;
                 }
@@ -119,6 +145,18 @@ statement : function_declaration
                 {
                     $$ = $1;
                 }
+          ;
+
+reference : identifier
+            {
+                $$ = new IdentifierList();
+                $$->push_back($1);
+            }
+          | reference TOKEN_PERIOD identifier
+            {
+                $$ = $1;
+                $$->push_back($3);
+            }
           ;
 
 function_declaration : TOKEN_FUNCTION identifier TOKEN_LEFT_PARENTHESIS function_declaration_argument_list TOKEN_RIGHT_PARENTHESIS TOKEN_COLON type block
@@ -180,18 +218,20 @@ literal_value : TOKEN_BOOLEAN_LITERAL
                     }
               | TOKEN_STRING_LITERAL
                     {
-                        $$ = new StringNode(*$1);
+                        const std::string value = interpretString(*$1);
+                        // create node with actual string value
+                        $$ = new StringNode(value);
                     }
               ;
     
-expression : identifier TOKEN_LEFT_PARENTHESIS function_call_argument_list TOKEN_RIGHT_PARENTHESIS
+expression : reference TOKEN_LEFT_PARENTHESIS function_call_argument_list TOKEN_RIGHT_PARENTHESIS
                 {
                     $$ = new FunctionCallNode(*$1, *$3);
                     delete $3;
                 }
-           | identifier
+           | reference
                 {
-                    $<identifier>$ = $1;
+                    $$ = new ReferenceNode(*$1);
                 }
            | literal_value
            | expression comparison expression
@@ -215,7 +255,8 @@ function_call_argument_list : %empty
                                 }
                             | function_call_argument_list TOKEN_COMMA expression
                                 {
-                                    $1->push_back($3);
+                                    $$ = $1;
+                                    $$->push_back($3);
                                 }
                             ;
 

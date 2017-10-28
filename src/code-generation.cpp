@@ -29,7 +29,7 @@ using namespace llvm;
 
 CodeGenerationContext::CodeGenerationContext() {
     this->llvmContext = new LLVMContext();
-    this->module = new Module("test", *(this->llvmContext));
+    this->module = new Module("main", *(this->llvmContext));
 }
 
 // Compile the AST into a module
@@ -82,10 +82,10 @@ int CodeGenerationContext::generateCode(ProgramNode& root) {
     dest.flush();
 
     // print IR to file
-//    ofstream outputFile("output.ll");
-//    raw_os_ostream output(outputFile);
-//
-//    module->print(output, nullptr);
+    ofstream outputFile("output.ll");
+    raw_os_ostream output(outputFile);
+
+    module->print(output, nullptr);
 
     return 0;
 }

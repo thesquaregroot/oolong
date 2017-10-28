@@ -5,13 +5,18 @@
 <statement-list>            := <statement> ; <statement-list>
                              | <empty>
 
-<statement>                 := <function-declaration>
+<statement>                 := import <package> ;
+                             | <function-declaration>
                              | <variable-declaration> ;
                              | <variable-declaration> = <expression> ;
                              | <identifier> = <expression> ;
                              | <expression> ;
                              | return <expression> ;
                              | <block>
+
+<reference>                 := <empty>
+                             | identifier
+                             | package . identifier
 
 <function-declaration>      := function <identifier> ( <function-delcaration-argument-list> ) -> <return-type> <block>
 
@@ -23,13 +28,12 @@
 <function-declartion
                  -argument> := <variable-declaration>
 
-
 <block>                     := { <statement-list> }
 
 <expression>                := <expression> <binary-operator> <expression>
                              | ( <expression> )
-                             | <identifier> ( <argument-list> )
-                             | <identifier>
+                             | <reference> ( <argument-list> )
+                             | <reference>
                              | <literal>
 
 <argument-list>             := <expression> , <argument-list>

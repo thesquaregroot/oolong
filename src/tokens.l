@@ -13,6 +13,7 @@
 
 [ \t\n]                 ;
 "function"              return TOKEN(TOKEN_FUNCTION);
+"import"                return TOKEN(TOKEN_IMPORT);
 "return"                return TOKEN(TOKEN_RETURN);
 "Boolean"               return TOKEN(TOKEN_BOOLEAN);
 "Integer"               return TOKEN(TOKEN_INTEGER);
@@ -37,7 +38,7 @@
 ")"                     return TOKEN(TOKEN_RIGHT_PARENTHESIS);
 "{"                     return TOKEN(TOKEN_LEFT_BRACE);
 "}"                     return TOKEN(TOKEN_RIGHT_BRACE);
-"."                     return TOKEN(TOKEN_DOT);
+"."                     return TOKEN(TOKEN_PERIOD);
 ","                     return TOKEN(TOKEN_COMMA);
 "+"                     return TOKEN(TOKEN_PLUS);
 "-"                     return TOKEN(TOKEN_MINUS);

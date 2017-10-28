@@ -10,10 +10,12 @@ class CodeGenerationContext;
 class StatementNode;
 class ExpressionNode;
 class VariableDeclarationNode;
+class IdentifierNode;
 
 typedef std::vector<StatementNode*> StatementList;
 typedef std::vector<ExpressionNode*> ExpressionList;
 typedef std::vector<VariableDeclarationNode*> VariableList;
+typedef std::vector<IdentifierNode*> IdentifierList;
 
 class Node {
 public:
@@ -81,12 +83,22 @@ public:
     virtual llvm::Value* generateCode(CodeGenerationContext& context);
 };
 
+
+class ReferenceNode : public ExpressionNode {
+public:
+    ReferenceNode(const IdentifierList& reference) : reference(reference) {}
+
+    const IdentifierList& reference;
+
+    virtual llvm::Value* generateCode(CodeGenerationContext& context);
+};
+
 class FunctionCallNode : public ExpressionNode {
 public:
-    FunctionCallNode(const IdentifierNode& id, ExpressionList& arguments) : id(id), arguments(arguments) {}
-    FunctionCallNode(const IdentifierNode& id) : id(id) {}
+    FunctionCallNode(const IdentifierList& reference, ExpressionList& arguments) : reference(reference), arguments(arguments) {}
+    FunctionCallNode(const IdentifierList& reference) : reference(reference) {}
 
-    const IdentifierNode& id;
+    const IdentifierList& reference;
     ExpressionList arguments;
 
     virtual llvm::Value* generateCode(CodeGenerationContext& context);
@@ -160,6 +172,15 @@ public:
     const IdentifierNode& id;
     VariableList arguments;
     BlockNode& block;
+
+    virtual llvm::Value* generateCode(CodeGenerationContext& context);
+};
+
+class ImportStatementNode : public StatementNode {
+public:
+    ImportStatementNode(const IdentifierList& reference) : reference(reference) {}
+
+    const IdentifierList& reference;
 
     virtual llvm::Value* generateCode(CodeGenerationContext& context);
 };

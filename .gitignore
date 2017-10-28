@@ -31,7 +31,10 @@
 *.out
 *.app
 
-# Generated Files
+# IR files
+*.ll
+
+# Generated files
 oolong
 src/parser.cpp
 src/parser.hpp
