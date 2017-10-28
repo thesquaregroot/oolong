@@ -177,9 +177,15 @@ Value* FunctionDeclarationNode::generateCode(CodeGenerationContext& context)
 		argTypes.push_back(typeOf((**it).type, llvmContext));
 	}
 	FunctionType *ftype = FunctionType::get(typeOf(type, llvmContext), makeArrayRef(argTypes), false);
-	Function *function = Function::Create(ftype, GlobalValue::InternalLinkage, id.name.c_str(), context.getModule());
+    Function *function = nullptr;
     if (id.name == "main") {
+        // main function
+	    function = Function::Create(ftype, GlobalValue::ExternalLinkage, id.name.c_str(), context.getModule());
         context.setMainFunction(function);
+    }
+    else {
+        // normal function
+	    function = Function::Create(ftype, GlobalValue::InternalLinkage, id.name.c_str(), context.getModule());
     }
     BasicBlock *bblock = BasicBlock::Create(llvmContext, "entry", function, 0);
 

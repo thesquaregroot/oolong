@@ -8,7 +8,7 @@
 #include <llvm/IR/Type.h>
 #include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/LLVMContext.h>
-#include <llvm/IR/PassManager.h>
+#include <llvm/IR/LegacyPassManager.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/CallingConv.h>
 #include <llvm/IR/IRPrintingPasses.h>
@@ -18,24 +18,76 @@
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
 #include <llvm/ExecutionEngine/GenericValue.h>
 #include <llvm/Support/raw_os_ostream.h>
+#include <llvm/Support/FileSystem.h>
+#include "llvm/Support/TargetRegistry.h"
+#include "llvm/Support/TargetSelect.h"
+#include "llvm/Target/TargetMachine.h"
+#include "llvm/Target/TargetOptions.h"
 
 using namespace std;
 using namespace llvm;
 
 CodeGenerationContext::CodeGenerationContext() {
     this->llvmContext = new LLVMContext();
-    this->module = new Module("main", *(this->llvmContext));
+    this->module = new Module("test", *(this->llvmContext));
 }
 
 // Compile the AST into a module
-void CodeGenerationContext::generateCode(ProgramNode& root)
-{
+int CodeGenerationContext::generateCode(ProgramNode& root) {
 	root.generateCode(*this);
 
-    // print to file
-    ofstream outputFile("a.out");
-    raw_os_ostream output(outputFile);
-    module->print(output, nullptr);
+    // Initialize the target registry etc.
+    InitializeAllTargetInfos();
+    InitializeAllTargets();
+    InitializeAllTargetMCs();
+    InitializeAllAsmParsers();
+    InitializeAllAsmPrinters();
+
+    auto targetTriple = sys::getDefaultTargetTriple();
+    module->setTargetTriple(targetTriple);
+
+    string error;
+    auto target = TargetRegistry::lookupTarget(targetTriple, error);
+
+    // Print an error and exit if we couldn't find the requested target.
+    // This generally occurs if we've forgotten to initialize the
+    // TargetRegistry or we have a bogus target triple.
+    if (!target) {
+        errs() << error;
+        return 1;
+    }
+
+    auto cpu = "generic";
+    auto features = "";
+
+    TargetOptions opt;
+    auto RM = Optional<Reloc::Model>();
+    auto targetMachine = target->createTargetMachine(targetTriple, cpu, features, opt, RM);
+
+    module->setDataLayout(targetMachine->createDataLayout());
+
+    auto filename = "output.o";
+    std::error_code errorCode;
+    raw_fd_ostream dest(filename, errorCode, sys::fs::F_None);
+
+    legacy::PassManager pass;
+    auto fileType = TargetMachine::CGFT_ObjectFile;
+
+    if (targetMachine->addPassesToEmitFile(pass, dest, fileType)) {
+        errs() << "Target machine can't emit a file of this type";
+        return 1;
+    }
+
+    pass.run(*module);
+    dest.flush();
+
+    // print IR to file
+//    ofstream outputFile("output.ll");
+//    raw_os_ostream output(outputFile);
+//
+//    module->print(output, nullptr);
+
+    return 0;
 }
 
 // Executes the AST by running the main function

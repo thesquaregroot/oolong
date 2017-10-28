@@ -13,3 +13,4 @@ src/tokens.cpp: src/tokens.l src/parser.hpp
 
 oolong: Makefile src/parser.cpp src/node.cpp src/code-generation.cpp src/oolong.cpp src/tokens.cpp
 	g++ -o $@ `llvm-config --libs core native --cxxflags --ldflags` -O0 -g src/*.cpp
+

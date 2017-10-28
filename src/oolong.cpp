@@ -22,8 +22,6 @@ int main(int argc, char **argv) {
     }
 
 	CodeGenerationContext context;
-	context.generateCode(*programNode);
-
-    return 0;
+	return context.generateCode(*programNode);
 }
 

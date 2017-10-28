@@ -31,7 +31,7 @@ private:
 public:
     CodeGenerationContext();
 
-    void generateCode(ProgramNode& root);
+    int generateCode(ProgramNode& root);
     llvm::GenericValue runCode();
     std::map<std::string, llvm::Value*>& locals();
     llvm::BasicBlock *currentBlock();
