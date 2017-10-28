@@ -12,7 +12,7 @@ function main(parameters: Array<String>) : Integer {
     }
 }
 
-function fibonacci(n: readonly Integer) -> Integer {
+function fibonacci(n: readonly Integer) : Integer {
     Integer result = 0;
     if (n < 0) {
         throw new InvalidArgumentException("Negative index are not allowed.");
