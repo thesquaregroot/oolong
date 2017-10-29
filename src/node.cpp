@@ -8,27 +8,22 @@
 #include <llvm/IR/Type.h>
 #include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/LLVMContext.h>
-#include <llvm/IR/LegacyPassManager.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/CallingConv.h>
-#include <llvm/IR/IRPrintingPasses.h>
 #include <llvm/IR/IRBuilder.h>
-#include <llvm/Bitcode/BitcodeReader.h>
-#include <llvm/Bitcode/BitcodeWriter.h>
-#include <llvm/Support/TargetSelect.h>
-#include <llvm/ExecutionEngine/ExecutionEngine.h>
-#include <llvm/ExecutionEngine/GenericValue.h>
 #include <llvm/Support/raw_ostream.h>
 
 using namespace std;
 using namespace llvm;
+
+static const string FUNCTION_PACKAGE_SEPARATOR = "___";
 
 /* Return the fully formed reference name (joined with periods) */
 static string createReferenceName(const IdentifierList& reference) {
     stringstream referenceStream;
     for (size_t i = 0; i<reference.size(); i++) {
         if (i != 0) {
-            referenceStream << "___";
+            referenceStream << FUNCTION_PACKAGE_SEPARATOR;
         }
         referenceStream << reference[i]->name;
     }
@@ -45,6 +40,56 @@ static Type *typeOf(const IdentifierNode& type, LLVMContext& llvmContext)
 		return Type::getDoubleTy(llvmContext);
 	}
 	return Type::getVoidTy(llvmContext);
+}
+
+/* Build a string that represents the provided type */
+static string getTypeName(Type* type) {
+    switch (type->getTypeID()) {
+        case Type::TypeID::VoidTyID:        return "Void";
+        case Type::TypeID::DoubleTyID:      return "Double";
+        case Type::TypeID::IntegerTyID:     return "Integer";
+        case Type::TypeID::ArrayTyID:       return "Array<" + getTypeName(type->getArrayElementType()) + ">";
+        case Type::TypeID::PointerTyID:     return "Pointer<" + getTypeName(type->getPointerElementType()) + ">";
+        case Type::TypeID::StructTyID:      return type->getStructName().str();
+        default: {
+            // not prepared for this, use stream conversion
+            string typeString;
+            llvm::raw_string_ostream stream(typeString);
+            type->print(stream);
+            return typeString;
+        }
+    }
+}
+
+static Value* convertType(Argument* declaredArgument, Value* callingArgument, CodeGenerationContext& context) {
+    Type* declaredType = declaredArgument->getType();
+    Type* callingType = callingArgument->getType();
+    if (declaredType == callingType) {
+        // same type pass through
+        return callingArgument;
+    }
+
+    LLVMContext& llvmContext = context.getLLVMContext();
+    // char* declared
+    if (declaredType->getTypeID() == Type::TypeID::PointerTyID && declaredType->getPointerElementType()->getTypeID() == Type::TypeID::IntegerTyID) {
+        // convert String to char*
+        if (callingType->getTypeID() == Type::TypeID::ArrayTyID && callingType->getArrayElementType()->getTypeID() == Type::TypeID::IntegerTyID) {
+            ConstantDataSequential* argument = (ConstantDataSequential*) callingArgument;
+
+            Constant *zero = Constant::getNullValue(IntegerType::getInt32Ty(llvmContext));
+            vector<llvm::Value*> indices;
+            indices.push_back(zero);
+            indices.push_back(zero);
+            // make global reference to constant
+            GlobalVariable *global = new GlobalVariable(*context.getModule(), callingType, true, GlobalValue::PrivateLinkage, argument, ".str");
+            // get a pointer to the global constant
+            GetElementPtrInst* pointer = GetElementPtrInst::CreateInBounds(callingType, global, makeArrayRef(indices), "", context.currentBlock());
+            return pointer;
+        }
+    }
+
+    cerr << "No valid conversion found for " << getTypeName(callingType) << " to " << getTypeName(declaredType) << endl;
+    return nullptr;
 }
 
 Value* ProgramNode::generateCode(CodeGenerationContext& context) {
@@ -74,7 +119,8 @@ Value* DoubleNode::generateCode(CodeGenerationContext& context) {
 }
 
 Value* StringNode::generateCode(CodeGenerationContext& context) {
-    return ConstantDataArray::getString(context.getLLVMContext(), value, true /* null terminated */);
+    Constant* constant = ConstantDataArray::getString(context.getLLVMContext(), value, true);
+    return constant;
 }
 
 Value* IdentifierNode::generateCode(CodeGenerationContext& context) {
@@ -100,12 +146,21 @@ Value* FunctionCallNode::generateCode(CodeGenerationContext& context) {
 	if (function == nullptr) {
 		cerr << "No such function: " << functionName << endl;
 	}
-	vector<Value*> args;
-	ExpressionList::const_iterator it;
-	for (it = arguments.begin(); it != arguments.end(); it++) {
-		args.push_back((**it).generateCode(context));
+	vector<Value*> callingArguments;
+	ExpressionList::const_iterator callIt = arguments.begin();
+    auto declaredIt = function->arg_begin();
+	while (callIt != arguments.end()) {
+        Argument* declaredArgument = declaredIt;
+        Value* callingArgument = (*callIt)->generateCode(context);
+        Value* convertedArgument = convertType(declaredArgument, callingArgument, context);
+        if (convertedArgument == nullptr) {
+            return nullptr;
+        }
+		callingArguments.push_back(convertedArgument);
+        callIt++;
+        declaredIt++;
 	}
-	CallInst *call = CallInst::Create(function, makeArrayRef(args), "", context.currentBlock());
+	CallInst *call = CallInst::Create(function, makeArrayRef(callingArguments), "", context.currentBlock());
 	return call;
 }
 

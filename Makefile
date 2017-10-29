@@ -12,7 +12,7 @@ src/tokens.cpp: src/tokens.l src/parser.hpp
 	flex -o $@ $^
 
 oolong: Makefile src/parser.cpp src/node.cpp src/code-generation.cpp src/oolong.cpp src/tokens.cpp packages
-	g++ -o $@ `llvm-config --libs core native --cxxflags --ldflags` -O0 -g src/*.cpp
+	g++ -o $@ `llvm-config --libs core native --cxxflags --ldflags` src/*.cpp
 
 packages: src/package/io.c
 	gcc -c src/package/*.c
