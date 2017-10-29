@@ -2,6 +2,6 @@
 import io;
 
 function main() : Integer {
-    io.print("Hello, world!");
+    io.print("Hello, world!\n");
 }
 

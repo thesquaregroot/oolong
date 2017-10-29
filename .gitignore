@@ -31,9 +31,16 @@
 *.out
 *.app
 
-# Generated Files
+# Valgrind dumps
+vgcore.*
+
+# IR files
+*.ll
+
+# Generated files
 oolong
 src/parser.cpp
+src/parser.output
 src/parser.hpp
 src/tokens.cpp
 

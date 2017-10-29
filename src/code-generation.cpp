@@ -29,12 +29,26 @@ using namespace llvm;
 
 CodeGenerationContext::CodeGenerationContext() {
     this->llvmContext = new LLVMContext();
-    this->module = new Module("test", *(this->llvmContext));
+    this->module = new Module("main", *(this->llvmContext));
 }
 
 // Compile the AST into a module
 int CodeGenerationContext::generateCode(ProgramNode& root) {
 	root.generateCode(*this);
+
+    // save IR
+    std::string intermediateRepresentation;
+    raw_string_ostream output(intermediateRepresentation);
+    module->print(output, nullptr);
+
+    if (intermediateRepresentation.length() == 0) {
+        return 1;
+    } else {
+        ofstream outputFile("output.ll");
+        outputFile << intermediateRepresentation;
+        outputFile.flush();
+        outputFile.close();
+    }
 
     // Initialize the target registry etc.
     InitializeAllTargetInfos();
@@ -61,7 +75,7 @@ int CodeGenerationContext::generateCode(ProgramNode& root) {
     auto features = "";
 
     TargetOptions opt;
-    auto RM = Optional<Reloc::Model>();
+    auto RM = Optional<Reloc::Model>(Reloc::Model::PIC_);
     auto targetMachine = target->createTargetMachine(targetTriple, cpu, features, opt, RM);
 
     module->setDataLayout(targetMachine->createDataLayout());
@@ -80,12 +94,6 @@ int CodeGenerationContext::generateCode(ProgramNode& root) {
 
     pass.run(*module);
     dest.flush();
-
-    // print IR to file
-//    ofstream outputFile("output.ll");
-//    raw_os_ostream output(outputFile);
-//
-//    module->print(output, nullptr);
 
     return 0;
 }
