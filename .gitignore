@@ -31,6 +31,9 @@
 *.out
 *.app
 
+# Valgrind dumps
+vgcore.*
+
 # IR files
 *.ll
 
