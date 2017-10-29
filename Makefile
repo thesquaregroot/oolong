@@ -1,7 +1,7 @@
 all: oolong
 
 clean:
-	rm -f oolong a.out *.ll *.o src/parser.cpp src/parser.hpp src/tokens.cpp
+	rm -f oolong a.out *.ll *.o vgcore.* src/parser.cpp src/parser.hpp src/tokens.cpp
 
 src/parser.cpp: src/parser.y
 	bison -d -o $@ $^
