@@ -40,5 +40,5 @@ target_link_libraries(oolong ${LLVM_LIBS})
 
 ### packages ###
 add_custom_target(lib_dir ALL COMMAND mkdir -p ${PROJECT_SOURCE_DIR}/lib)
-add_custom_target(packages lib_dir COMMAND find ${PROJECT_SOURCE_DIR}/src/package -name *.c -execdir gcc -c {} -o ${PROJECT_SOURCE_DIR}/lib/{}.o \\\\;)
+add_custom_target(packages ALL DEPENDS lib_dir COMMAND find ${PROJECT_SOURCE_DIR}/src/package -name *.c -execdir gcc -c {} -o ${PROJECT_SOURCE_DIR}/lib/{}.o \\\\;)
 
