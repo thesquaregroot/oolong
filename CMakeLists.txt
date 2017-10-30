@@ -20,7 +20,7 @@ message(STATUS "Found bison ${BISON_PACKAGE_VERSION}")
 find_package(FLEX)
 message(STATUS "Found flex ${FLEX_PACKAGE_VERSION}")
 
-bison_target(parser ${SRC_DIR}/parser.y ${SRC_DIR}/parser.cpp COMPILE_FLAGS -d)
+bison_target(parser ${SRC_DIR}/parser.y ${SRC_DIR}/parser.cpp COMPILE_FLAGS "-v -d")
 flex_target(tokens ${SRC_DIR}/tokens.l ${SRC_DIR}/tokens.cpp)
 add_flex_bison_dependency(tokens parser)
 

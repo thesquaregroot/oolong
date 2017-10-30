@@ -79,11 +79,13 @@
 %type <variableDeclaration> variable_declaration
 %type <variableDeclarationList> function_declaration_argument_list
 %type <expressionList> function_call_argument_list
-%type <token> comparison
 
 /* Operator precedence for mathematical operators */
 %left TOKEN_PLUS TOKEN_MINUS
 %left TOKEN_MULTIPLY TOKEN_DIVIDE
+%nonassoc TOKEN_EQUAL_TO TOKEN_NOT_EQUAL_TO TOKEN_LESS_THAN
+%nonassoc TOKEN_LESS_THAN_OR_EQUAL_TO TOKEN_GREATER_THAN
+%nonassoc TOKEN_GREATER_THAN_OR_EQUAL_TO
 
 %start program
 
@@ -96,11 +98,7 @@ program : statement_list
             }
         ;
 
-statement_list : %empty
-                    {
-                        $$ = new StatementList();
-                    }
-               | statement
+statement_list : statement
                     {
                         $$ = new StatementList();
                         $$->push_back($<statement>1);
@@ -234,13 +232,49 @@ expression : reference TOKEN_LEFT_PARENTHESIS function_call_argument_list TOKEN_
                     $$ = new ReferenceNode(*$1);
                 }
            | literal_value
-           | expression comparison expression
-                {
-                    $$ = new BinaryOperatorNode(*$1, $2, *$3);
-                }
            | TOKEN_LEFT_PARENTHESIS expression TOKEN_RIGHT_PARENTHESIS
                 {
                     $$ = $2;
+                }
+           | expression TOKEN_PLUS expression
+                {
+                    $$ = new BinaryOperatorNode(*$1, $2, *$3);
+                }
+           | expression TOKEN_MINUS expression
+                {
+                    $$ = new BinaryOperatorNode(*$1, $2, *$3);
+                }
+           | expression TOKEN_MULTIPLY expression
+                {
+                    $$ = new BinaryOperatorNode(*$1, $2, *$3);
+                }
+           | expression TOKEN_DIVIDE expression
+                {
+                    $$ = new BinaryOperatorNode(*$1, $2, *$3);
+                }
+           | expression TOKEN_EQUAL_TO expression
+                {
+                    $$ = new BinaryOperatorNode(*$1, $2, *$3);
+                }
+           | expression TOKEN_NOT_EQUAL_TO expression
+                {
+                    $$ = new BinaryOperatorNode(*$1, $2, *$3);
+                }
+           | expression TOKEN_LESS_THAN expression
+                {
+                    $$ = new BinaryOperatorNode(*$1, $2, *$3);
+                }
+           | expression TOKEN_LESS_THAN_OR_EQUAL_TO expression
+                {
+                    $$ = new BinaryOperatorNode(*$1, $2, *$3);
+                }
+           | expression TOKEN_GREATER_THAN expression
+                {
+                    $$ = new BinaryOperatorNode(*$1, $2, *$3);
+                }
+           | expression TOKEN_GREATER_THAN_OR_EQUAL_TO expression
+                {
+                    $$ = new BinaryOperatorNode(*$1, $2, *$3);
                 }
            ;
     
@@ -277,10 +311,5 @@ type : TOKEN_BOOLEAN
             $$ = new IdentifierNode("String");
         }
      ;
-
-comparison : TOKEN_EQUAL_TO | TOKEN_NOT_EQUAL_TO | TOKEN_LESS_THAN | TOKEN_LESS_THAN_OR_EQUAL_TO
-           | TOKEN_GREATER_THAN | TOKEN_GREATER_THAN_OR_EQUAL_TO | TOKEN_PLUS | TOKEN_MINUS
-           | TOKEN_MULTIPLY | TOKEN_DIVIDE
-           ;
 
 %%
