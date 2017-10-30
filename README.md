@@ -11,6 +11,27 @@ Example code (idealized, not necessarily implemented) can be found in the
 *samples* directory.  These files will be how I figure out what I like and don't
 like.
 
+## Building and Running
+Ensure the following dependencies are installed:
+
+ - cmake
+ - llvm
+ - g++/gcc
+
+Build the project using:
+
+    ./make.sh
+
+Compile Oolong files using:
+
+    ./compile.sh <path-to-file>
+
+(e.g. `./compile.sh samples/hello-world.ool`).
+
+Then run the output program via:
+
+    ./a.out
+
 ## Primary Philosophy
  - Explicit is better than implicit.
  - Implicit is better than redundant.
