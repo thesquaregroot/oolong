@@ -1,8 +1,7 @@
-#include<iostream>
 #include "node.h"
 #include "code-generation.h"
-#include <llvm/ExecutionEngine/GenericValue.h>
-#include <llvm/Support/TargetSelect.h>
+#include "oolong.h"
+#include <iostream>
 
 using namespace std;
 using namespace llvm;

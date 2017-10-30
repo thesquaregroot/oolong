@@ -1,0 +1,4 @@
+// cmake variables
+#define OOLONG_MAJOR_VERSION @oolong_VERSION_MAJOR@
+#define OOLONG_MINOR_VERSION @oolong_VERSION_MINOR@
+

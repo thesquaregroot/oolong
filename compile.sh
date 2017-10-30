@@ -21,5 +21,5 @@ SCRIPT_DIR="$(dirname $0)"
 
 cd $SCRIPT_DIR
 ./oolong < $1
-gcc *.o
+gcc output.o lib/*.o
 
