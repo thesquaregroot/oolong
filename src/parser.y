@@ -3,7 +3,7 @@
 
 %{
     #define YYDEBUG 1
-    #include "node.h"
+    #include "abstract-syntax-tree.h"
     #include <stdio.h>
     ProgramNode *programNode; /* the top level root node of our final AST */
 

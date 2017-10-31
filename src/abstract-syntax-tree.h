@@ -1,5 +1,5 @@
-#ifndef NODE_H
-#define NODE_H
+#ifndef ABSTRACT_SYNTAX_TREE_H
+#define ABSTRACT_SYNTAX_TREE_H
 
 #include <string>
 #include <iostream>
