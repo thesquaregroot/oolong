@@ -20,6 +20,5 @@ INPUT_FILE="$1"
 SCRIPT_DIR="$(dirname $0)"
 
 cd $SCRIPT_DIR
-./oolong < $1
-gcc output.o lib/*.o
+./oolong < $1 && gcc output.o lib/*.o
 
