@@ -16,9 +16,7 @@ file(GLOB SRCS ${SRC_DIR}/*.cpp)
 
 ### bison and flex ###
 find_package(BISON)
-message(STATUS "Found bison ${BISON_PACKAGE_VERSION}")
 find_package(FLEX)
-message(STATUS "Found flex ${FLEX_PACKAGE_VERSION}")
 
 bison_target(parser ${SRC_DIR}/parser.y ${SRC_DIR}/parser.cpp COMPILE_FLAGS "-v -d")
 flex_target(tokens ${SRC_DIR}/tokens.l ${SRC_DIR}/tokens.cpp)
@@ -33,8 +31,11 @@ add_definitions(${LLVM_DEFINITIONS})
 include_directories(${LLVM_INCLUDE_DIRS})
 
 ### Oolong ###
-set(CMAKE_CXX_FLAGS "-std=c++11")
+set(CMAKE_CXX_FLAGS "-std=c++11 -O3 -pipe -fstack-protector-strong -fno-plt -fPIC -fvisibility-inlines-hidden -Werror=date-time -Wall -W -Wno-unused-parameter -Wwrite-strings -Wcast-qual -Wno-missing-field-initializers -pedantic -Wno-long-long -Wno-maybe-uninitialized -Wdelete-non-virtual-dtor -Wno-comment -ffunction-sections -fdata-sections -DNDEBUG -fno-exceptions")
 add_executable(oolong ${SRCS} ${BISON_parser_OUTPUTS} ${FLEX_tokens_OUTPUTS})
+if(UNIX AND NOT APPLE)
+    target_link_libraries(oolong tinfo)
+endif()
 
 ### LLVM (add flags)
 llvm_map_components_to_libnames(LLVM_LIBS all)
