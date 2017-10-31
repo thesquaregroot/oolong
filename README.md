@@ -12,10 +12,12 @@ Example code (idealized, not necessarily implemented) can be found in the
 like.
 
 ## Building and Running
-Ensure the following dependencies are installed:
+Ensure the following dependencies are installed (rough version requirements):
 
- - cmake
- - llvm
+ - cmake (>2.6)
+ - llvm (>5.0.0)
+ - bison (>3.0)
+ - flex (>2.5)
  - g++/gcc
 
 Build the project using:
@@ -31,6 +33,25 @@ Compile Oolong files using:
 Then run the output program via:
 
     ./a.out
+
+## Building on OSX
+
+If you're using homebrew, you should be able to install all the dependencies you
+need using:
+
+    brew install cmake llvm bison flex
+
+For bison, flex, and llvm you will need to update your PATH to point to the
+newer versions that will be made available to you.  For me this meant running:
+
+    # add new PATH entries
+    echo 'export PATH="/usr/local/opt/bison/bin:$PATH"' >> ~/.bash_profile
+    echo 'export PATH="/usr/local/opt/flex/bin:$PATH"' >> ~/.bash_profile
+    echo 'export PATH="/usr/local/opt/llvm/bin:$PATH"' >> ~/.bash_profile
+    # source changes for current session
+    . ~/.bash_profile
+
+Once you have completed those steps you should be able to proceed as normal.
 
 ## Primary Philosophy
  - Explicit is better than implicit.

@@ -24,18 +24,20 @@ bison_target(parser ${SRC_DIR}/parser.y ${SRC_DIR}/parser.cpp COMPILE_FLAGS "-v 
 flex_target(tokens ${SRC_DIR}/tokens.l ${SRC_DIR}/tokens.cpp)
 add_flex_bison_dependency(tokens parser)
 
-### llvm ###
+### llvm (find) ###
 find_package(LLVM REQUIRED CONFIG)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 
 add_definitions(${LLVM_DEFINITIONS})
 include_directories(${LLVM_INCLUDE_DIRS})
-llvm_map_components_to_libnames(LLVM_LIBS core native)
 
 ### Oolong ###
-set(CMAKE_CXX_FLAGS "-L/usr/lib -lLLVM-5.0 -I/usr/include -march=x86-64 -mtune=generic -O2 -pipe -fstack-protector-strong -fno-plt -fPIC -fvisibility-inlines-hidden -Werror=date-time -std=c++11 -Wall -W -Wno-unused-parameter -Wwrite-strings -Wcast-qual -Wno-missing-field-initializers -pedantic -Wno-long-long -Wno-maybe-uninitialized -Wdelete-non-virtual-dtor -Wno-comment -ffunction-sections -fdata-sections -O3 -DNDEBUG  -fno-exceptions -DLLVM_BUILD_GLOBAL_ISEL -D_GNU_SOURCE -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS")
+set(CMAKE_CXX_FLAGS "-std=c++11")
 add_executable(oolong ${SRCS} ${BISON_parser_OUTPUTS} ${FLEX_tokens_OUTPUTS})
+
+### LLVM (add flags)
+llvm_map_components_to_libnames(LLVM_LIBS all)
 target_link_libraries(oolong ${LLVM_LIBS})
 
 ### packages ###
