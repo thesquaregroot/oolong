@@ -143,6 +143,14 @@ statement : TOKEN_IMPORT reference TOKEN_SEMICOLON
                 {
                     $$ = $1;
                 }
+          | TOKEN_IF TOKEN_LEFT_PARENTHESIS expression TOKEN_RIGHT_PARENTHESIS block
+                {
+                    $$ = new IfStatementNode($3, $5);
+                }
+          | TOKEN_IF TOKEN_LEFT_PARENTHESIS expression TOKEN_RIGHT_PARENTHESIS block else-list
+                {
+                    $$ = new IfStatementNode($3, $5, $6);
+                }
           ;
 
 reference : identifier
@@ -170,6 +178,10 @@ block : TOKEN_LEFT_BRACE statement_list TOKEN_RIGHT_BRACE
                 $$->statements = *$2;
             }
       ;
+
+else_list : %empty
+          | TOKEN_ELSE block
+          | TOKEN ELSE TOKEN_LEFT_PARENTHESIS expression TOKEN_RIGHT_PARENTHESIS block else_list
 
 variable_declaration : identifier TOKEN_COLON type
                         {

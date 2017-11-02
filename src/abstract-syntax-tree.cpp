@@ -175,7 +175,7 @@ Value* BinaryOperatorNode::generateCode(CodeGenerationContext& context) {
 		/* TODO: comparison */
 	}
 
-	return NULL;
+	return nullptr;
 math:
 	return BinaryOperator::Create(instruction, leftHandSide.generateCode(context), rightHandSide.generateCode(context), "", context.currentBlock());
 }

@@ -19,10 +19,14 @@
 "Integer"               return TOKEN(TOKEN_INTEGER);
 "Double"                return TOKEN(TOKEN_DOUBLE);
 "String"                return TOKEN(TOKEN_STRING);
-"AND"                   return TOKEN(TOKEN_AND);
-"OR"                    return TOKEN(TOKEN_OR);
-"TRUE"                  SAVE_TOKEN; return TOKEN_BOOLEAN_LITERAL;
-"FALSE"                 SAVE_TOKEN; return TOKEN_BOOLEAN_LITERAL;
+"if"                    return TOKEN(TOKEN_IF);
+"else"                  return TOKEN(TOKEN_ELSE);
+"and"                   return TOKEN(TOKEN_AND);
+"&&"                    return TOKEN(TOKEN_AND);
+"or"                    return TOKEN(TOKEN_OR);
+"||"                    return TOKEN(TOKEN_OR);
+"true"                  SAVE_TOKEN; return TOKEN_BOOLEAN_LITERAL;
+"false"                 SAVE_TOKEN; return TOKEN_BOOLEAN_LITERAL;
 [a-zA-Z_][a-zA-Z0-9_]*  SAVE_TOKEN; return TOKEN_IDENTIFIER;
 [0-9]+\.[0-9]*          SAVE_TOKEN; return TOKEN_DOUBLE_LITERAL;
 [0-9]+                  SAVE_TOKEN; return TOKEN_INTEGER_LITERAL;
