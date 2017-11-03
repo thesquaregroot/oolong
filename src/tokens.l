@@ -7,10 +7,10 @@
     #include "abstract-syntax-tree.h"
     #include "parser.hpp"
 
-    int tokenStart = 0;
-    int tokenEnd = 0;
+    int tokenStart = 1;
+    int tokenEnd = 1;
 
-    #define TRACK_TOKEN_LOCATION tokenStart = tokenEnd; tokenEnd += yyleng
+    #define TRACK_TOKEN_LOCATION tokenStart = tokenEnd+1; tokenEnd += yyleng
     #define SAVE_TOKEN yylval.string = new std::string(yytext, yyleng)
     #define TOKEN(t) (yylval.token = t)
 %}

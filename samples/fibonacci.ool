@@ -2,7 +2,7 @@
 import io;
 
 // Reads an integer in from stdin (n) and prints the n-th fibonacci number
-function main(parameters: Array<String>) : Integer {
+function main() : Integer {
     Integer n = io.read("Enter a number: ", Integer);
     Integer nFibonacci = fibonacci(n);
     try {
