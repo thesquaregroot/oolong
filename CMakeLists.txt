@@ -18,8 +18,8 @@ file(GLOB SRCS ${SRC_DIR}/*.cpp)
 find_package(BISON)
 find_package(FLEX)
 
-bison_target(parser ${SRC_DIR}/parser.y ${SRC_DIR}/parser.cpp COMPILE_FLAGS "-v -d")
-flex_target(tokens ${SRC_DIR}/tokens.l ${SRC_DIR}/tokens.cpp)
+bison_target(parser ${SRC_DIR}/parser.y ${SRC_DIR}/parser.cpp COMPILE_FLAGS "-v")
+flex_target(tokens ${SRC_DIR}/tokens.l ${SRC_DIR}/tokens.cpp COMPILE_FLAGS "--header-file=${SRC_DIR}/tokens.h")
 add_flex_bison_dependency(tokens parser)
 
 ### llvm (find) ###
