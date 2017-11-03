@@ -14,7 +14,7 @@
     extern int tokenEnd;
 
     void yyerror(const char *s) {
-        printf("ERROR (line %d: %d-%d): %s\n", yylineno, tokenStart, tokenEnd, s);
+        fprintf(stderr, "ERROR (line %d: %d-%d): %s\n", yylineno, tokenStart, tokenEnd, s);
     }
 
     void replaceAll(std::string& value, const std::string substring, const std::string replacement) {

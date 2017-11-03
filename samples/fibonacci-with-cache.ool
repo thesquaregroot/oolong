@@ -3,7 +3,7 @@ import io;
 
 type Fibonacci {
     contruct() {
-        this._cache = List<Integer>();
+        let this._cache = List<Integer>();
         _cache.add(1); // fib(0)
         _cache.add(1); // fib(1)
         _cache.add(2); // fib(2)
@@ -18,7 +18,7 @@ type Fibonacci {
         if (n < _cache.size()) {
             return _cache[n];
         } else {
-            for (int i=_cache.size(); i<=n; i++) {
+            for (i : Integer =_cache.size(); i<=n; i++) {
                 _cache.add(_cache[i-1] + _cache[i-2]);
             }
             return _cache[n];
@@ -29,8 +29,8 @@ type Fibonacci {
 function main(parameters: Array<String>) : Integer {
     let fibonacci = Fibonacci();
 
-    io.printLine(fibonacci.get(10));
-    io.printLine(fibonacci.get(100));
-    io.printLine(fibonacci.get(200));
+    io.printLine("F(10): ", fibonacci.get(10));
+    io.printLine("F(100): ", fibonacci.get(100));
+    io.printLine("F(200): ", fibonacci.get(200));
 }
 
