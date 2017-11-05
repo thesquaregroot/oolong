@@ -211,10 +211,11 @@ int main(int argc, char **argv) {
         context.setOutputName(outputName);
         int returnValue = context.generateCode(*programNode);
         if (returnValue > 0) {
+            // unable to generate code, bail out
             return returnValue;
         }
         if (execute) {
-            context.runCode();
+            return context.runCode().IntVal.getLimitedValue(0);
         }
     }
     if (link) {
