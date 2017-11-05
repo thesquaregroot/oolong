@@ -8,7 +8,7 @@ using namespace llvm;
 
 extern int yydebug;
 extern int yyparse();
-extern ProgramNode* programNode;
+extern BlockNode* programNode;
 
 int main(int argc, char **argv) {
     // enable debug

@@ -12,7 +12,6 @@ namespace llvm {
     class GenericValue;
     class Value;
 }
-class ProgramNode;
 
 class CodeGenerationBlock {
 public:
@@ -20,6 +19,8 @@ public:
     std::map<std::string, llvm::Value*> locals;
     llvm::Value *returnValue;
 };
+
+class BlockNode;
 
 class CodeGenerationContext {
 private:
@@ -31,16 +32,18 @@ private:
 public:
     CodeGenerationContext();
 
-    int generateCode(ProgramNode& root);
+    int generateCode(BlockNode& root);
     llvm::GenericValue runCode();
     std::map<std::string, llvm::Value*>& locals();
     llvm::BasicBlock *currentBlock();
+    llvm::Function* currentFunction();
     llvm::LLVMContext& getLLVMContext();
     llvm::Module* getModule();
     llvm::Function* getMainFunction();
     void setMainFunction(llvm::Function* function);
     void pushBlock(llvm::BasicBlock *block);
     void popBlock();
+    void replaceCurrentBlock(llvm::BasicBlock* block);
     void setCurrentReturnValue(llvm::Value *value);
     llvm::Value* getCurrentReturnValue();
 };

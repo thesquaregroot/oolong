@@ -28,8 +28,8 @@
 "true"                  SAVE_TOKEN; return TOKEN_BOOLEAN_LITERAL;
 "false"                 SAVE_TOKEN; return TOKEN_BOOLEAN_LITERAL;
 [a-zA-Z_][a-zA-Z0-9_]*  SAVE_TOKEN; return TOKEN_IDENTIFIER;
-[0-9]+\.[0-9]*          SAVE_TOKEN; return TOKEN_DOUBLE_LITERAL;
-[0-9]+                  SAVE_TOKEN; return TOKEN_INTEGER_LITERAL;
+(-)?[0-9]+\.[0-9]*      SAVE_TOKEN; return TOKEN_DOUBLE_LITERAL;
+(-)?[0-9]+              SAVE_TOKEN; return TOKEN_INTEGER_LITERAL;
 \"(\\.|[^"\\])*\"       SAVE_TOKEN; return TOKEN_STRING_LITERAL;
 "="                     return TOKEN(TOKEN_ASSIGNMENT);
 "=="                    return TOKEN(TOKEN_EQUAL_TO);

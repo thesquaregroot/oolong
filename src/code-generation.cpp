@@ -33,7 +33,7 @@ CodeGenerationContext::CodeGenerationContext() {
 }
 
 // Compile the AST into a module
-int CodeGenerationContext::generateCode(ProgramNode& root) {
+int CodeGenerationContext::generateCode(BlockNode& root) {
 	root.generateCode(*this);
 
     // save IR
@@ -113,8 +113,12 @@ std::map<std::string, Value*>& CodeGenerationContext::locals() {
     return blocks.top()->locals;
 }
 
-BasicBlock *CodeGenerationContext::currentBlock() {
+BasicBlock* CodeGenerationContext::currentBlock() {
     return blocks.top()->block;
+}
+
+Function* CodeGenerationContext::currentFunction() {
+    return blocks.top()->block->getParent();
 }
 
 LLVMContext& CodeGenerationContext::getLLVMContext() {
@@ -142,6 +146,12 @@ void CodeGenerationContext::popBlock() {
     CodeGenerationBlock *top = blocks.top();
     blocks.pop();
     delete top;
+}
+
+void CodeGenerationContext::replaceCurrentBlock(BasicBlock* block) {
+    CodeGenerationBlock* top = blocks.top();
+    // replace BasicBlock but leave locals, etc.
+    top->block = block;
 }
 
 void CodeGenerationContext::setCurrentReturnValue(Value *value) {

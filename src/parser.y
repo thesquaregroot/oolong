@@ -5,7 +5,7 @@
     #define YYDEBUG 1
     #include "abstract-syntax-tree.h"
     #include <stdio.h>
-    ProgramNode *programNode; /* the top level root node of our final AST */
+    BlockNode* programNode; /* the top level root node of our final AST */
 
     extern int yylex();
     void yyerror(const char *s) {
@@ -39,6 +39,7 @@
     BlockNode *block;
     StatementList *statementList;
     ExpressionNode *expression;
+    IfStatementNode *ifStatement;
     StatementNode *statement;
     IdentifierNode *identifier;
     IdentifierList *identifierList;
@@ -64,6 +65,7 @@
 %token <token> TOKEN_LEFT_BRACE TOKEN_RIGHT_BRACE TOKEN_COMMA
 %token <token> TOKEN_PERIOD TOKEN_PLUS TOKEN_MINUS TOKEN_MULTIPLY
 %token <token> TOKEN_DIVIDE TOKEN_SEMICOLON TOKEN_COLON
+%token <token> TOKEN_IF TOKEN_ELSE
 
 /* Define the type of node our nonterminal symbols represent.
    The types refer to the %union declaration above. Ex: when
@@ -74,6 +76,7 @@
 %type <statementList> program statement_list
 %type <expression> expression literal_value
 %type <statement> statement function_declaration
+%type <ifStatement> else_list
 %type <identifier> identifier type
 %type <identifierList> reference
 %type <variableDeclaration> variable_declaration
@@ -93,7 +96,7 @@
 
 program : statement_list
             {
-                programNode = new ProgramNode();
+                programNode = new BlockNode();
                 programNode->statements = *$1;
             }
         ;
@@ -145,11 +148,11 @@ statement : TOKEN_IMPORT reference TOKEN_SEMICOLON
                 }
           | TOKEN_IF TOKEN_LEFT_PARENTHESIS expression TOKEN_RIGHT_PARENTHESIS block
                 {
-                    $$ = new IfStatementNode($3, $5);
+                    $$ = new IfStatementNode($3, *$5);
                 }
-          | TOKEN_IF TOKEN_LEFT_PARENTHESIS expression TOKEN_RIGHT_PARENTHESIS block else-list
+          | TOKEN_IF TOKEN_LEFT_PARENTHESIS expression TOKEN_RIGHT_PARENTHESIS block else_list
                 {
-                    $$ = new IfStatementNode($3, $5, $6);
+                    $$ = new IfStatementNode($3, *$5, $6);
                 }
           ;
 
@@ -168,7 +171,6 @@ reference : identifier
 function_declaration : TOKEN_FUNCTION identifier TOKEN_LEFT_PARENTHESIS function_declaration_argument_list TOKEN_RIGHT_PARENTHESIS TOKEN_COLON type block
                         {
                             $$ = new FunctionDeclarationNode(*$7, *$2, *$4, *$8);
-                            delete $4;
                         }
                      ;
 
@@ -179,9 +181,19 @@ block : TOKEN_LEFT_BRACE statement_list TOKEN_RIGHT_BRACE
             }
       ;
 
-else_list : %empty
-          | TOKEN_ELSE block
-          | TOKEN ELSE TOKEN_LEFT_PARENTHESIS expression TOKEN_RIGHT_PARENTHESIS block else_list
+else_list : TOKEN_ELSE block
+                {
+                    $$ = new IfStatementNode(nullptr, *$2);
+                }
+          | TOKEN_ELSE TOKEN_LEFT_PARENTHESIS expression TOKEN_RIGHT_PARENTHESIS block
+                {
+                    $$ = new IfStatementNode($3, *$5);
+                }
+          | TOKEN_ELSE TOKEN_LEFT_PARENTHESIS expression TOKEN_RIGHT_PARENTHESIS block else_list
+                {
+                    $$ = new IfStatementNode($3, *$5, $6);
+                }
+          ;
 
 variable_declaration : identifier TOKEN_COLON type
                         {
@@ -214,7 +226,7 @@ identifier : TOKEN_IDENTIFIER
 
 literal_value : TOKEN_BOOLEAN_LITERAL
                     {
-                        $$ = new BooleanNode(*$1 == "TRUE");
+                        $$ = new BooleanNode(*$1 == "true");
                     }
               | TOKEN_INTEGER_LITERAL
                     {
