@@ -54,12 +54,12 @@ static Type *typeOf(const IdentifierNode& type, LLVMContext& llvmContext)
         return Type::getInt1Ty(llvmContext);
     }
     else if (type.name == "Integer") {
-		return Type::getInt64Ty(llvmContext);
-	}
-	else if (type.name == "Double") {
-		return Type::getDoubleTy(llvmContext);
-	}
-	return Type::getVoidTy(llvmContext);
+        return Type::getInt64Ty(llvmContext);
+    }
+    else if (type.name == "Double") {
+        return Type::getDoubleTy(llvmContext);
+    }
+    return Type::getVoidTy(llvmContext);
 }
 
 /* Build a string that represents the provided type */
@@ -126,11 +126,11 @@ Value* BooleanNode::generateCode(CodeGenerationContext& context) {
 }
 
 Value* IntegerNode::generateCode(CodeGenerationContext& context) {
-	return ConstantInt::get(Type::getInt64Ty(context.getLLVMContext()), value, true);
+    return ConstantInt::get(Type::getInt64Ty(context.getLLVMContext()), value, true);
 }
 
 Value* DoubleNode::generateCode(CodeGenerationContext& context) {
-	return ConstantFP::get(Type::getDoubleTy(context.getLLVMContext()), value);
+    return ConstantFP::get(Type::getDoubleTy(context.getLLVMContext()), value);
 }
 
 Value* StringNode::generateCode(CodeGenerationContext& context) {
@@ -139,147 +139,156 @@ Value* StringNode::generateCode(CodeGenerationContext& context) {
 }
 
 Value* IdentifierNode::generateCode(CodeGenerationContext& context) {
-	if (context.locals().find(name) == context.locals().end()) {
-		return error(context, "Undeclared variable " + name);
-	}
-	return new LoadInst(context.locals()[name], "", false, context.currentBlock());
+    auto scope = context.fullScope();
+    if (scope.find(name) == scope.end()) {
+        return error(context, "Undeclared variable " + name);
+    }
+    return new LoadInst(scope[name], "", false, context.currentBlock());
 }
 
 Value* ReferenceNode::generateCode(CodeGenerationContext& context) {
     const string name = createReferenceName(reference);
-	if (context.locals().find(name) == context.locals().end()) {
-		return error(context, "Undeclared variable " + name);
-	}
-	return new LoadInst(context.locals()[name], "", false, context.currentBlock());
+    auto scope = context.fullScope();
+    if (scope.find(name) == scope.end()) {
+        return error(context, "Undeclared variable " + name);
+    }
+    return new LoadInst(scope[name], "", false, context.currentBlock());
 }
 
 Value* FunctionCallNode::generateCode(CodeGenerationContext& context) {
     const string functionName = createReferenceName(reference);
-	Function *function = context.getModule()->getFunction(functionName);
-	if (function == nullptr) {
-		return error(context, "No such function: " + functionName);
-	}
-	vector<Value*> callingArguments;
-	ExpressionList::const_iterator callIt = arguments.begin();
+    Function *function = context.getModule()->getFunction(functionName);
+    if (function == nullptr) {
+        return error(context, "No such function: " + functionName);
+    }
+    vector<Value*> callingArguments;
+    ExpressionList::const_iterator callIt = arguments.begin();
     auto declaredIt = function->arg_begin();
     size_t position = 1;
-	while (callIt != arguments.end()) {
+    while (callIt != arguments.end()) {
         Argument* declaredArgument = declaredIt;
         Value* callingArgument = (*callIt)->generateCode(context);
         Value* convertedArgument = convertType(declaredArgument->getType(), callingArgument, context);
         if (convertedArgument == nullptr) {
             return error(context, "Invalid argument for function " + functionName + " (position " + to_string(position) + ")");
         }
-		callingArguments.push_back(convertedArgument);
+        callingArguments.push_back(convertedArgument);
         callIt++;
         declaredIt++;
         position++;
-	}
-	CallInst *call = CallInst::Create(function, makeArrayRef(callingArguments), "", context.currentBlock());
-	return call;
+    }
+    CallInst *call = CallInst::Create(function, makeArrayRef(callingArguments), "", context.currentBlock());
+    return call;
 }
 
 Value* BinaryOperatorNode::generateCode(CodeGenerationContext& context) {
-	Instruction::BinaryOps instruction;
-	switch (operation) {
-		case TOKEN_PLUS: 	    { instruction = Instruction::Add; } break;
-		case TOKEN_MINUS: 	    { instruction = Instruction::Sub; } break;
-		case TOKEN_MULTIPLY:    { instruction = Instruction::Mul; } break;
-		case TOKEN_DIVIDE: 	    { instruction = Instruction::SDiv; } break;
+    Instruction::BinaryOps instruction;
+    switch (operation) {
+        case TOKEN_PLUS:        { instruction = Instruction::Add; } break;
+        case TOKEN_MINUS:       { instruction = Instruction::Sub; } break;
+        case TOKEN_MULTIPLY:    { instruction = Instruction::Mul; } break;
+        case TOKEN_DIVIDE:      { instruction = Instruction::SDiv; } break;
 
-		/* TODO: comparisons */
+        /* TODO: comparisons */
 
         default: {
             return error(context, "Unimplemented operation: " + operation);
         }
-	}
+    }
 
-	return BinaryOperator::Create(instruction, leftHandSide.generateCode(context), rightHandSide.generateCode(context), "", context.currentBlock());
+    return BinaryOperator::Create(instruction, leftHandSide.generateCode(context), rightHandSide.generateCode(context), "", context.currentBlock());
 }
 
 Value* AssignmentNode::generateCode(CodeGenerationContext& context) {
-	if (context.locals().find(leftHandSide.name) == context.locals().end()) {
-		return error(context, "Undeclared variable " + leftHandSide.name);
-	}
-	return new StoreInst(rightHandSide.generateCode(context), context.locals()[leftHandSide.name], false, context.currentBlock());
+    auto scope = context.fullScope();
+    if (scope.find(leftHandSide.name) == scope.end()) {
+        return error(context, "Undeclared variable " + leftHandSide.name);
+    }
+    Value* variable = scope[leftHandSide.name];
+    Value* value = rightHandSide.generateCode(context);
+    return new StoreInst(value, variable, false, context.currentBlock());
 }
 
 Value* BlockNode::generateCode(CodeGenerationContext& context) {
-	StatementList::const_iterator it;
-	Value *last = nullptr;
-	for (it = statements.begin(); it != statements.end(); it++) {
-		last = (**it).generateCode(context);
-	}
-	return last;
+    StatementList::const_iterator it;
+    Value *last = nullptr;
+    for (it = statements.begin(); it != statements.end(); it++) {
+        last = (**it).generateCode(context);
+    }
+    return last;
 }
 
 Value* ExpressionStatementNode::generateCode(CodeGenerationContext& context) {
-	return expression.generateCode(context);
+    return expression.generateCode(context);
 }
 
 Value* ReturnStatementNode::generateCode(CodeGenerationContext& context) {
-	Value *returnValue = expression.generateCode(context);
-	ReturnInst::Create(context.getLLVMContext(), returnValue, context.currentBlock());
-	context.setCurrentReturnValue(returnValue);
-	return returnValue;
+    Value *returnValue = expression.generateCode(context);
+    ReturnInst::Create(context.getLLVMContext(), returnValue, context.currentBlock());
+    context.setCurrentReturnValue(returnValue);
+    return returnValue;
 }
 
 Value* VariableDeclarationNode::generateCode(CodeGenerationContext& context) {
+    auto scope = context.fullScope();
+    if (scope.find(id.name) != scope.end()) {
+        return error(context, "Redeclaration of variable " + id.name);
+    }
     LLVMContext& llvmContext = context.getLLVMContext();
     Type* identifierType = typeOf(type, llvmContext);
-	AllocaInst *alloc = new AllocaInst(identifierType, identifierType->getPointerAddressSpace(), id.name, context.currentBlock());
-	context.locals()[id.name] = alloc;
-	if (assignmentExpression != NULL) {
-		AssignmentNode assn(id, *assignmentExpression);
-		assn.generateCode(context);
-	}
-	return alloc;
+    AllocaInst *alloc = new AllocaInst(identifierType, identifierType->getPointerAddressSpace(), id.name, context.currentBlock());
+    context.localScope()[id.name] = alloc;
+    if (assignmentExpression != nullptr) {
+        AssignmentNode assignmentNode(id, *assignmentExpression);
+        assignmentNode.generateCode(context);
+    }
+    return alloc;
 }
 
 Value* FunctionDeclarationNode::generateCode(CodeGenerationContext& context) {
     LLVMContext& llvmContext = context.getLLVMContext();
-	vector<Type*> argumentTypes;
-	VariableList::const_iterator it;
-	for (it = arguments.begin(); it != arguments.end(); it++) {
-		argumentTypes.push_back(typeOf((**it).type, llvmContext));
-	}
-	FunctionType *ftype = FunctionType::get(typeOf(type, llvmContext), makeArrayRef(argumentTypes), false);
+    vector<Type*> argumentTypes;
+    VariableList::const_iterator it;
+    for (it = arguments.begin(); it != arguments.end(); it++) {
+        argumentTypes.push_back(typeOf((**it).type, llvmContext));
+    }
+    FunctionType *ftype = FunctionType::get(typeOf(type, llvmContext), makeArrayRef(argumentTypes), false);
     Function *function = nullptr;
     if (id.name == "main") {
         // main function, externally linked
-	    function = Function::Create(ftype, GlobalValue::ExternalLinkage, id.name.c_str(), context.getModule());
+        function = Function::Create(ftype, GlobalValue::ExternalLinkage, id.name.c_str(), context.getModule());
         context.setMainFunction(function);
     }
     else {
         // normal function, internally linked
-	    function = Function::Create(ftype, GlobalValue::InternalLinkage, id.name.c_str(), context.getModule());
+        function = Function::Create(ftype, GlobalValue::InternalLinkage, id.name.c_str(), context.getModule());
     }
     BasicBlock *bblock = BasicBlock::Create(llvmContext, "entry", function, 0);
 
-	context.pushBlock(bblock);
+    context.pushBlock(bblock);
 
     // add arguments to function scope
-	Function::arg_iterator argumentValues = function->arg_begin();
-	for (it = arguments.begin(); it != arguments.end(); it++) {
-		(**it).generateCode(context);
+    Function::arg_iterator argumentValues = function->arg_begin();
+    for (it = arguments.begin(); it != arguments.end(); it++) {
+        (**it).generateCode(context);
 
         Value* argumentValue = &*argumentValues++;
-		argumentValue->setName((*it)->id.name.c_str());
+        argumentValue->setName((*it)->id.name.c_str());
         // don't need reference
-		new StoreInst(argumentValue, context.locals()[(*it)->id.name], false, bblock);
-	}
+        new StoreInst(argumentValue, context.fullScope()[(*it)->id.name], false, bblock);
+    }
 
     // add code for statements
-	block.generateCode(context);
+    block.generateCode(context);
 
     // add return statement to end of current block (may have changed)
     if (context.getCurrentReturnValue() == nullptr) {
         warning(context, "Adding implicit return instruction.");
-	    ReturnInst::Create(llvmContext, nullptr, context.currentBlock());
+        ReturnInst::Create(llvmContext, nullptr, context.currentBlock());
     }
     context.popBlock();
 
-	return function;
+    return function;
 }
 
 Value* ImportStatementNode::generateCode(CodeGenerationContext& context) {

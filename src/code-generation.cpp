@@ -109,16 +109,30 @@ GenericValue CodeGenerationContext::runCode() {
 	return v;
 }
 
-std::map<std::string, Value*>& CodeGenerationContext::locals() {
-    return blocks.top()->locals;
+map<string, Value*>& CodeGenerationContext::localScope() {
+    return blocks.back()->locals;
+}
+
+map<string, Value*> CodeGenerationContext::fullScope() {
+    map<string, Value*> scope;
+
+    // const iterate over block in reverse over, adding locals to scope
+    auto blockIterator = blocks.crbegin();
+    while (blockIterator != blocks.crend()) {
+        auto block = *blockIterator;
+        scope.insert(block->locals.begin(), block->locals.end());
+        blockIterator++;
+    }
+
+    return std::move(scope);
 }
 
 BasicBlock* CodeGenerationContext::currentBlock() {
-    return blocks.top()->block;
+    return blocks.back()->block;
 }
 
 Function* CodeGenerationContext::currentFunction() {
-    return blocks.top()->block->getParent();
+    return blocks.back()->block->getParent();
 }
 
 LLVMContext& CodeGenerationContext::getLLVMContext() {
@@ -138,27 +152,27 @@ void CodeGenerationContext::setMainFunction(Function* function) {
 }
 
 void CodeGenerationContext::pushBlock(BasicBlock *block) {
-    blocks.push(new CodeGenerationBlock());
-    blocks.top()->block = block;
+    blocks.push_back(new CodeGenerationBlock());
+    blocks.back()->block = block;
 }
 
 void CodeGenerationContext::popBlock() {
-    CodeGenerationBlock *top = blocks.top();
-    blocks.pop();
-    delete top;
+    CodeGenerationBlock* back = blocks.back();
+    blocks.pop_back();
+    delete back;
 }
 
 void CodeGenerationContext::replaceCurrentBlock(BasicBlock* block) {
-    CodeGenerationBlock* top = blocks.top();
+    CodeGenerationBlock* back = blocks.back();
     // replace BasicBlock but leave locals, etc.
-    top->block = block;
+    back->block = block;
 }
 
 void CodeGenerationContext::setCurrentReturnValue(Value *value) {
-    blocks.top()->returnValue = value;
+    blocks.back()->returnValue = value;
 }
 
 Value* CodeGenerationContext::getCurrentReturnValue() {
-    return blocks.top()->returnValue;
+    return blocks.back()->returnValue;
 }
 

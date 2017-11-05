@@ -1,7 +1,7 @@
 #ifndef CODE_GENERATION_H
 #define CODE_GENERATION_H
 
-#include <stack>
+#include <deque>
 #include <map>
 
 namespace llvm {
@@ -26,7 +26,7 @@ class CodeGenerationContext {
 private:
     llvm::LLVMContext *llvmContext;
     llvm::Module *module;
-    std::stack<CodeGenerationBlock*> blocks;
+    std::deque<CodeGenerationBlock*> blocks; // deque instead of stack to allow or iteration
     llvm::Function *mainFunction;
 
 public:
@@ -34,7 +34,8 @@ public:
 
     int generateCode(BlockNode& root);
     llvm::GenericValue runCode();
-    std::map<std::string, llvm::Value*>& locals();
+    std::map<std::string, llvm::Value*>& localScope();
+    std::map<std::string, llvm::Value*> fullScope();
     llvm::BasicBlock *currentBlock();
     llvm::Function* currentFunction();
     llvm::LLVMContext& getLLVMContext();
