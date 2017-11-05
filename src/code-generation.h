@@ -24,13 +24,16 @@ class BlockNode;
 
 class CodeGenerationContext {
 private:
+    bool emitLlvm = false;
     llvm::LLVMContext *llvmContext;
     llvm::Module *module;
     std::deque<CodeGenerationBlock*> blocks; // deque instead of stack to allow or iteration
     llvm::Function *mainFunction;
 
 public:
-    CodeGenerationContext();
+    CodeGenerationContext(const std::string& unitName);
+
+    void setEmitLlvm(bool value);
 
     int generateCode(BlockNode& root);
     llvm::GenericValue runCode();

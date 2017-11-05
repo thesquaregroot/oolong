@@ -27,9 +27,13 @@
 using namespace std;
 using namespace llvm;
 
-CodeGenerationContext::CodeGenerationContext() {
+CodeGenerationContext::CodeGenerationContext(const string& unitName) {
     this->llvmContext = new LLVMContext();
-    this->module = new Module("main", *(this->llvmContext));
+    this->module = new Module(unitName, *(this->llvmContext));
+}
+
+void CodeGenerationContext::setEmitLlvm(bool value) {
+    emitLlvm = value;
 }
 
 // Compile the AST into a module
