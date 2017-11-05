@@ -3,10 +3,11 @@
 #include "oolong.h"
 #include <llvm/ExecutionEngine/GenericValue.h>
 #include <iostream>
+#include <sstream>
 #include <vector>
 #include <string>
 #include <stdio.h>
-
+#include <stdlib.h>
 
 using namespace std;
 using namespace llvm;
@@ -52,11 +53,25 @@ static void setYyin(FILE* fp) {
     yyrestart(yyin);
 }
 
+static void linkFiles(const string& outputFile, vector<string> objectFiles) {
+    stringstream command;
+    // base command
+    command << "gcc -o " << outputFile;
+    // add user object files
+    for (string objectFile : objectFiles) {
+        command << " " << objectFile;
+    }
+    // add oolong packages
+    command << " lib/*.o";
+    system(command.str().c_str());
+}
+
 int main(int argc, char **argv) {
     bool debug = false;
     bool emitLlvm = false;
     bool execute = false;
-    string outputFileOverride;
+    bool link = true;
+    string outputFile = "a.out";
     vector<string> inputFiles;
 
     //// collect arguments
@@ -86,7 +101,7 @@ int main(int argc, char **argv) {
                 cerr << "Output file not specified.";
                 return 1;
             }
-            outputFileOverride = string(argv[i]);
+            outputFile = string(argv[i]);
         }
         else {
             // assume input file name
@@ -110,6 +125,7 @@ int main(int argc, char **argv) {
         inputFiles.push_back(STDIN_INDICATOR);
     }
 
+    vector<string> objectFiles;
     for (string inputFile : inputFiles) {
         // parse input
         int parseValue = 0;
@@ -134,6 +150,7 @@ int main(int argc, char **argv) {
             moduleName = inputFile;
             outputName = inputFile + ".o";
         }
+        objectFiles.push_back(outputName);
 
         // don't continue if parse failed
         if (parseValue > 0) {
@@ -151,7 +168,9 @@ int main(int argc, char **argv) {
             context.runCode();
         }
     }
-    // TODO: link
+    if (link) {
+        linkFiles(outputFile, objectFiles);
+    }
     return 0;
 }
 
