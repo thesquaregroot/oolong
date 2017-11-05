@@ -12,8 +12,14 @@ using namespace std;
 using namespace llvm;
 
 extern int yydebug;
+
+extern FILE* yyin;
 extern int yyparse();
+extern void yyrestart(FILE* fp);
+
 extern BlockNode* programNode;
+
+const char* currentParseFile = nullptr;
 
 static void printVersion() {
     cout << "Oolong, version " << OOLONG_MAJOR_VERSION << "." << OOLONG_MINOR_VERSION << endl;
@@ -31,7 +37,6 @@ static void printUsage() {
     cout << "   -d, --debug                 Enable debug output." << endl;
     cout << "   -l, --emit-llvm             Do not link, output LLVM IR." << endl;
     cout << "   -e, --execute               Do not create any artifacts, execute code directly." << endl;
-    cout << "   -c, --compile-only          Compile input files but do not run the linker." << endl;
     cout << "   -o, --output-file <file>    Set output file name." << endl;
     cout << endl;
 }
@@ -41,14 +46,20 @@ static bool match(const string& argument, const char* shortOption, const char* l
             (longOption != nullptr && argument == longOption);
 }
 
+static void setYyin(FILE* fp) {
+    yyin = fp;
+    // clear flex buffer in case of multiple files
+    yyrestart(yyin);
+}
+
 int main(int argc, char **argv) {
     bool debug = false;
     bool emitLlvm = false;
     bool execute = false;
-    bool link = true;
-    string outputFile = "a.out";
+    string outputFileOverride;
     vector<string> inputFiles;
 
+    //// collect arguments
     for (int i=1; i<argc; i++) {
         string argument(argv[i]);
 
@@ -69,43 +80,78 @@ int main(int argc, char **argv) {
         else if (match(argument, "-e", "--execute")) {
             execute = true;
         }
-        else if (match(argument, "-c", "--compile-only")) {
-            link = false;
-        }
         else if (match(argument, "-o", "--output-file")) {
             // next argument is output file name
             if (++i >= argc) {
                 cerr << "Output file not specified.";
                 return 1;
             }
-            outputFile = string(argv[i]);
+            outputFileOverride = string(argv[i]);
         }
         else {
             // assume input file name
             inputFiles.push_back(argument);
         }
     }
+    //// collect arguments (end)
 
     // enable debug
     if (debug) {
         yydebug = 1;
     }
 
-    // parse input
-    int parseValue = yyparse();
-    if (parseValue > 0) {
-        return parseValue;
+    if (execute && inputFiles.size() > 1) {
+        cerr << "Execute option is only valid with a single input file." << endl;
+        return 1;
+    }
+    const char* STDIN_INDICATOR = "--";
+    if (inputFiles.size() == 0) {
+        // indicate that stdin should be used
+        inputFiles.push_back(STDIN_INDICATOR);
     }
 
-	CodeGenerationContext context("main.ool");
-    context.setEmitLlvm(emitLlvm);
-	int returnValue = context.generateCode(*programNode);
-    if (returnValue > 0) {
-        return returnValue;
+    for (string inputFile : inputFiles) {
+        // parse input
+        int parseValue = 0;
+        string moduleName = "stdin.ool";
+        string outputName = "stdin.ool.o";
+        if (inputFile == STDIN_INDICATOR) {
+            currentParseFile = "<stdin>";
+
+            setYyin(stdin);
+            parseValue = yyparse();
+        }
+        else {
+            // open file and use for parse
+            currentParseFile = inputFile.c_str();
+
+            FILE* fp = fopen(currentParseFile, "r");
+            setYyin(fp);
+            parseValue = yyparse();
+            fclose(fp);
+
+            // use provided name
+            moduleName = inputFile;
+            outputName = inputFile + ".o";
+        }
+
+        // don't continue if parse failed
+        if (parseValue > 0) {
+            return parseValue;
+        }
+
+        CodeGenerationContext context(moduleName);
+        context.setEmitLlvm(emitLlvm);
+        context.setOutputName(outputName);
+        int returnValue = context.generateCode(*programNode);
+        if (returnValue > 0) {
+            return returnValue;
+        }
+        if (execute) {
+            context.runCode();
+        }
     }
-    if (execute) {
-        context.runCode();
-    }
+    // TODO: link
     return 0;
 }
 
