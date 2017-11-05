@@ -15,8 +15,12 @@ extern int yydebug;
 extern int yyparse();
 extern BlockNode* programNode;
 
+static void printVersion() {
+    cout << "Oolong, version " << OOLONG_MAJOR_VERSION << "." << OOLONG_MINOR_VERSION << endl;
+}
+
 static void printUsage() {
-    cout << "Oolong help" << endl;
+    printVersion();
     cout << endl;
     cout << "   oolong <options>                    Read from stdin." << endl;
     cout << "   oolong <options> <input-files>      Read <input-files>." << endl;
@@ -49,7 +53,7 @@ int main(int argc, char **argv) {
         string argument(argv[i]);
 
         if (match(argument, nullptr, "--version")) {
-            cout << "Oolong, version " << OOLONG_MAJOR_VERSION << "." << OOLONG_MINOR_VERSION << endl;
+            printVersion();
             return 0;
         }
         else if (match(argument, "-h", "--help")) {
