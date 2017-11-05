@@ -6,6 +6,7 @@
 #include <sstream>
 #include <vector>
 #include <string>
+#include <cstdio>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -38,6 +39,7 @@ static void printUsage() {
     cout << "   -d, --debug                 Enable debug output." << endl;
     cout << "   -l, --emit-llvm             Do not link, output LLVM IR." << endl;
     cout << "   -e, --execute               Do not create any artifacts, execute code directly." << endl;
+    cout << "   -c, --compile-only          Do not link, output object files." << endl;
     cout << "   -o, --output-file <file>    Set output file name." << endl;
     cout << endl;
 }
@@ -53,6 +55,11 @@ static void setYyin(FILE* fp) {
     yyrestart(yyin);
 }
 
+static string getFileName(const string& path) {
+    size_t lastSlash = path.find_last_of("/\\"); // forward or back slash
+    return path.substr(lastSlash);
+}
+
 static void linkFiles(const string& outputFile, vector<string> objectFiles) {
     stringstream command;
     // base command
@@ -66,12 +73,19 @@ static void linkFiles(const string& outputFile, vector<string> objectFiles) {
     system(command.str().c_str());
 }
 
+static void removeTempDirectory(const string& path) {
+    string command = "rm -r " + path;
+    system(command.c_str());
+}
+
 int main(int argc, char **argv) {
+    static string DEFAULT_OUTPUT_FILE = "a.out";
+
     bool debug = false;
     bool emitLlvm = false;
     bool execute = false;
     bool link = true;
-    string outputFile = "a.out";
+    string outputFile = DEFAULT_OUTPUT_FILE;
     vector<string> inputFiles;
 
     //// collect arguments
@@ -91,9 +105,13 @@ int main(int argc, char **argv) {
         }
         else if (match(argument, "-l", "--emit-llvm")) {
             emitLlvm = true;
+            link = false;
         }
         else if (match(argument, "-e", "--execute")) {
             execute = true;
+        }
+        else if (match(argument, "-c", "--compile-only")) {
+            link = false;
         }
         else if (match(argument, "-o", "--output-file")) {
             // next argument is output file name
@@ -119,6 +137,11 @@ int main(int argc, char **argv) {
         cerr << "Execute option is only valid with a single input file." << endl;
         return 1;
     }
+    if (!link && inputFiles.size() > 1) {
+        cerr << "When not linking, only one input file is permitted." << endl;
+        return 1;
+    }
+
     const char* STDIN_INDICATOR = "--";
     if (inputFiles.size() == 0) {
         // indicate that stdin should be used
@@ -126,6 +149,11 @@ int main(int argc, char **argv) {
     }
 
     vector<string> objectFiles;
+    string tempDirPath = "";
+    if (link) {
+        char tempDirTemplate[] = "/tmp/oolong_XXXXXXXX";
+        tempDirPath = string(mkdtemp(tempDirTemplate));
+    }
     for (string inputFile : inputFiles) {
         // parse input
         int parseValue = 0;
@@ -150,6 +178,16 @@ int main(int argc, char **argv) {
             moduleName = inputFile;
             outputName = inputFile + ".o";
         }
+        if (link) {
+            // no need to put output files in-place, create temp files
+            outputName = tempDirPath + getFileName(outputName);
+        }
+        else {
+            // not linking, outputFile should be used instead, if changed
+            if (outputFile != DEFAULT_OUTPUT_FILE) {
+                outputName = outputFile;
+            }
+        }
         objectFiles.push_back(outputName);
 
         // don't continue if parse failed
@@ -170,6 +208,7 @@ int main(int argc, char **argv) {
     }
     if (link) {
         linkFiles(outputFile, objectFiles);
+        removeTempDirectory(tempDirPath);
     }
     return 0;
 }
