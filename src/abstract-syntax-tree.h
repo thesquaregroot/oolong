@@ -20,16 +20,10 @@ typedef std::vector<IdentifierNode*> IdentifierList;
 class Node {
 public:
     virtual ~Node() {}
+
+    int lineNumber;
+
     virtual llvm::Value* generateCode(CodeGenerationContext& context) { return nullptr; }
-};
-
-class ProgramNode : public Node {
-public:
-    ProgramNode() {}
-
-    StatementList statements;
-
-    virtual llvm::Value* generateCode(CodeGenerationContext& context);
 };
 
 class ExpressionNode : public Node {
@@ -166,11 +160,11 @@ public:
 
 class FunctionDeclarationNode : public StatementNode {
 public:
-    FunctionDeclarationNode(const IdentifierNode& type, const IdentifierNode& id, const VariableList& arguments, BlockNode& block) : type(type), id(id), arguments(arguments), block(block) {}
+    FunctionDeclarationNode(const IdentifierNode& type, const IdentifierNode& id, VariableList& arguments, BlockNode& block) : type(type), id(id), arguments(arguments), block(block) {}
 
     const IdentifierNode& type;
     const IdentifierNode& id;
-    VariableList arguments;
+    VariableList& arguments;
     BlockNode& block;
 
     virtual llvm::Value* generateCode(CodeGenerationContext& context);
@@ -181,6 +175,18 @@ public:
     ImportStatementNode(const IdentifierList& reference) : reference(reference) {}
 
     const IdentifierList& reference;
+
+    virtual llvm::Value* generateCode(CodeGenerationContext& context);
+};
+
+class IfStatementNode : public StatementNode {
+public:
+    IfStatementNode(ExpressionNode* condition, BlockNode& block) : condition(condition), block(block) {}
+    IfStatementNode(ExpressionNode* condition, BlockNode& block, IfStatementNode* elseStatement) : condition(condition), block(block), elseStatement(elseStatement) {}
+
+    ExpressionNode* condition;
+    BlockNode& block;
+    IfStatementNode* elseStatement;
 
     virtual llvm::Value* generateCode(CodeGenerationContext& context);
 };

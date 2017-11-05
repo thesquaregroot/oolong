@@ -13,6 +13,7 @@
                              | <expression> ;
                              | return <expression> ;
                              | <block>
+                             | if ( <condition> ) <block> <else-list>
 
 <reference>                 := <empty>
                              | identifier
@@ -25,10 +26,15 @@
                              | <function-declaration-argument>
                              | <empty>
 
+<else-list>                 := <empty>
+                             | else <block>
+                             | else ( <condition> ) <block> <else-list>
+
 <function-declartion
                  -argument> := <variable-declaration>
 
-<block>                     := { <statement-list> }
+<block>                     := { }
+                             | { <statement-list> }
 
 <expression>                := <expression> <binary-operator> <expression>
                              | ( <expression> )

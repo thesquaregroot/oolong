@@ -1,0 +1,7 @@
+
+function main() : Integer {
+    if (true) {
+        return 2;
+    }
+    return 1;
+}

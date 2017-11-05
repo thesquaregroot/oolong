@@ -1,0 +1,10 @@
+
+function main() : Integer {
+    if (false) {
+        return 1;
+    } else (false) {
+        return 2;
+    } else {
+        return 3;
+    }
+}
