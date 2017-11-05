@@ -12,9 +12,10 @@
     extern int yylex();
     extern int tokenStart;
     extern int tokenEnd;
+    extern const char* currentParseFile;
 
     void yyerror(const char *s) {
-        fprintf(stderr, "ERROR (line %d: %d-%d): %s\n", yylineno, tokenStart, tokenEnd, s);
+        fprintf(stderr, "ERROR: In file %s (line %d: %d-%d): %s\n", currentParseFile, yylineno, tokenStart, tokenEnd, s);
     }
 
     void replaceAll(std::string& value, const std::string substring, const std::string replacement) {

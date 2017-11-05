@@ -40,11 +40,15 @@ if(UNIX AND NOT APPLE)
     target_link_libraries(oolong LLVM-5.0)
 endif()
 
-### LLVM (add flags)
+### LLVM (add flags) ###
 llvm_map_components_to_libnames(LLVM_LIBS all)
 target_link_libraries(oolong ${LLVM_LIBS})
 
 ### packages ###
 add_custom_target(lib_dir ALL COMMAND mkdir -p ${PROJECT_SOURCE_DIR}/lib)
 add_custom_target(packages ALL DEPENDS lib_dir COMMAND find ${PROJECT_SOURCE_DIR}/src/package -name *.c -execdir gcc -c {} -o ${PROJECT_SOURCE_DIR}/lib/{}.o \\\\;)
+
+### Packages (add to oolong for interpreter) ###
+file(GLOB PACKAGES ${PROJECT_SOURCE_DIR}/lib/*.o)
+target_link_libraries(oolong ${PACKAGES})
 

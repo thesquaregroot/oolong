@@ -27,9 +27,17 @@
 using namespace std;
 using namespace llvm;
 
-CodeGenerationContext::CodeGenerationContext() {
+CodeGenerationContext::CodeGenerationContext(const string& unitName) {
     this->llvmContext = new LLVMContext();
-    this->module = new Module("main", *(this->llvmContext));
+    this->module = new Module(unitName, *(this->llvmContext));
+}
+
+void CodeGenerationContext::setEmitLlvm(bool value) {
+    emitLlvm = value;
+}
+
+void CodeGenerationContext::setOutputName(const string& value) {
+    outputName = value;
 }
 
 // Compile the AST into a module
@@ -44,10 +52,13 @@ int CodeGenerationContext::generateCode(BlockNode& root) {
     if (intermediateRepresentation.length() == 0) {
         return 1;
     } else {
-        ofstream outputFile("output.ll");
-        outputFile << intermediateRepresentation;
-        outputFile.flush();
-        outputFile.close();
+        if (emitLlvm) {
+            const string llFileName = (module->getName() + ".ll").str();
+            ofstream outputFile(llFileName);
+            outputFile << intermediateRepresentation;
+            outputFile.flush();
+            outputFile.close();
+        }
     }
 
     // Initialize the target registry etc.
@@ -80,9 +91,8 @@ int CodeGenerationContext::generateCode(BlockNode& root) {
 
     module->setDataLayout(targetMachine->createDataLayout());
 
-    auto filename = "output.o";
     std::error_code errorCode;
-    raw_fd_ostream dest(filename, errorCode, sys::fs::F_None);
+    raw_fd_ostream dest(outputName, errorCode, sys::fs::F_None);
 
     legacy::PassManager pass;
     auto fileType = TargetMachine::CGFT_ObjectFile;

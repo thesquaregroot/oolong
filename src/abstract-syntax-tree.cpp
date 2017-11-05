@@ -18,15 +18,17 @@
 using namespace std;
 using namespace llvm;
 
+extern const char* currentParseFile;
+
 static const string FUNCTION_PACKAGE_SEPARATOR = "___";
 
 static Value* warning(CodeGenerationContext& context, const string& warningMessage) {
-    cerr << "warning: In function " << context.currentFunction()->getName().str() << ": " << warningMessage << endl;
+    cerr << "warning: In file " << currentParseFile << ", function " << context.currentFunction()->getName().str() << ": " << warningMessage << endl;
     return nullptr;
 }
 
 static Value* error(CodeGenerationContext& context, const string& errorMessage) {
-    const string fullError =  "In function " + context.currentFunction()->getName().str() + ": " + errorMessage;
+    const string fullError =  "In file " + string(currentParseFile) +  ", function " + context.currentFunction()->getName().str() + ": " + errorMessage;
     context.getLLVMContext().emitError(fullError);
     return nullptr;
 }

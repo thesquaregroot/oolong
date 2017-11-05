@@ -184,9 +184,9 @@ public:
     IfStatementNode(ExpressionNode* condition, BlockNode& block) : condition(condition), block(block) {}
     IfStatementNode(ExpressionNode* condition, BlockNode& block, IfStatementNode* elseStatement) : condition(condition), block(block), elseStatement(elseStatement) {}
 
-    ExpressionNode* condition;
+    ExpressionNode* condition = nullptr;
     BlockNode& block;
-    IfStatementNode* elseStatement;
+    IfStatementNode* elseStatement = nullptr;
 
     virtual llvm::Value* generateCode(CodeGenerationContext& context);
 };
