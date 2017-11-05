@@ -60,6 +60,11 @@ static string getFileName(const string& path) {
     return path.substr(lastSlash);
 }
 
+static bool isObjectFile(const string& path) {
+    // return true iff the extension is right
+    return path.rfind(".o") == path.length() - 2;
+}
+
 static void linkFiles(const string& outputFile, vector<string> objectFiles) {
     stringstream command;
     // base command
@@ -148,13 +153,19 @@ int main(int argc, char **argv) {
         inputFiles.push_back(STDIN_INDICATOR);
     }
 
-    vector<string> objectFiles;
     string tempDirPath = "";
     if (link) {
         char tempDirTemplate[] = "/tmp/oolong_XXXXXXXX";
         tempDirPath = string(mkdtemp(tempDirTemplate));
     }
+    vector<string> objectFiles;
     for (string inputFile : inputFiles) {
+        if (isObjectFile(inputFile)) {
+            // no need to do anything, just add it to the object files vector
+            objectFiles.push_back(inputFile);
+            continue;
+        }
+
         // parse input
         int parseValue = 0;
         string moduleName = "stdin.ool";
