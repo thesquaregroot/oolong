@@ -34,7 +34,15 @@ static Value* error(CodeGenerationContext& context, const string& errorMessage) 
 }
 
 static Type* getBooleanType(LLVMContext& llvmContext) {
-    return IntegerType::get(llvmContext, 1);
+    return Type::getInt1Ty(llvmContext);
+}
+
+static Type* getIntegerType(LLVMContext& llvmContext) {
+    return Type::getInt64Ty(llvmContext);
+}
+
+static Type* getDoubleType(LLVMContext& llvmContext) {
+    return Type::getDoubleTy(llvmContext);
 }
 
 /* Return the fully formed reference name (joined with periods) */
@@ -53,13 +61,13 @@ static string createReferenceName(const IdentifierList& reference) {
 static Type *typeOf(const IdentifierNode& type, LLVMContext& llvmContext)
 {
     if (type.name == "Boolean") {
-        return Type::getInt1Ty(llvmContext);
+        return getBooleanType(llvmContext);
     }
     else if (type.name == "Integer") {
-        return Type::getInt64Ty(llvmContext);
+        return getIntegerType(llvmContext);
     }
     else if (type.name == "Double") {
-        return Type::getDoubleTy(llvmContext);
+        return getDoubleType(llvmContext);
     }
     return Type::getVoidTy(llvmContext);
 }
@@ -98,6 +106,19 @@ static Value* convertType(Type* targetType, Value* value, CodeGenerationContext&
     }
 
     LLVMContext& llvmContext = context.getLLVMContext();
+
+    Type* integerType = getIntegerType(llvmContext);
+    Type* doubleType = getDoubleType(llvmContext);
+
+    // double target
+    if (targetType == doubleType) {
+        // convert Integer to Double
+        if (valueType == integerType) {
+            CastInst* cast = new SIToFPInst(value, doubleType, "", context.currentBlock());
+            return cast;
+        }
+    }
+
     // char* target
     if (targetType->getTypeID() == Type::TypeID::PointerTyID && targetType->getPointerElementType()->getTypeID() == Type::TypeID::IntegerTyID) {
         // convert String to char*
@@ -184,21 +205,57 @@ Value* FunctionCallNode::generateCode(CodeGenerationContext& context) {
 }
 
 Value* BinaryOperatorNode::generateCode(CodeGenerationContext& context) {
-    Instruction::BinaryOps instruction;
-    switch (operation) {
-        case TOKEN_PLUS:        { instruction = Instruction::Add; } break;
-        case TOKEN_MINUS:       { instruction = Instruction::Sub; } break;
-        case TOKEN_MULTIPLY:    { instruction = Instruction::Mul; } break;
-        case TOKEN_DIVIDE:      { instruction = Instruction::SDiv; } break;
+    Value* left = leftHandSide.generateCode(context);
+    Value* right = rightHandSide.generateCode(context);
 
-        /* TODO: comparisons */
+    Type* leftType = left->getType();
+    Type* rightType = right->getType();
+
+    bool isInteger = true;
+    LLVMContext& llvmContext = context.getLLVMContext();
+    Type* integerType = getIntegerType(llvmContext);
+    Type* doubleType = getDoubleType(llvmContext);
+    // change isInteger if either type is a float
+    if (!(leftType == integerType || leftType == doubleType)) {
+        // leftType is not integer or float
+        error(context, "Unable to perform binary operation with type " + getTypeName(leftType));
+    }
+    if (!(rightType == integerType || rightType == doubleType)) {
+        // rightType is not integer or float
+        error(context, "Unable to perform binary operation with type " + getTypeName(rightType));
+    }
+    if (leftType == doubleType || rightType == doubleType) {
+        left = convertType(doubleType, left, context);
+        right = convertType(doubleType, right, context);
+        isInteger = false;
+    }
+
+    bool isBinary = true;
+    Instruction::BinaryOps binaryInstruction;
+    CmpInst::Predicate predicate;
+    switch (operation) {
+        case TOKEN_PLUS:                        { binaryInstruction = isInteger ? Instruction::Add : Instruction::FAdd; } break;
+        case TOKEN_MINUS:                       { binaryInstruction = isInteger ? Instruction::Sub : Instruction::FSub; } break;
+        case TOKEN_MULTIPLY:                    { binaryInstruction = isInteger ? Instruction::Mul : Instruction::FMul; } break;
+        case TOKEN_DIVIDE:                      { binaryInstruction = isInteger ? Instruction::SDiv : Instruction::FDiv; } break;
+        case TOKEN_PERCENT:                     { binaryInstruction = isInteger ? Instruction::SRem : Instruction::FRem; } break;
+        case TOKEN_EQUAL_TO:                    { predicate = isInteger ? CmpInst::Predicate::ICMP_EQ : CmpInst::Predicate::FCMP_OEQ; isBinary = false; } break;
+        case TOKEN_NOT_EQUAL_TO:                { predicate = isInteger ? CmpInst::Predicate::ICMP_NE : CmpInst::Predicate::FCMP_ONE; isBinary = false; } break;
+        case TOKEN_GREATER_THAN:                { predicate = isInteger ? CmpInst::Predicate::ICMP_SGT : CmpInst::Predicate::FCMP_OGT; isBinary = false; } break;
+        case TOKEN_GREATER_THAN_OR_EQUAL_TO:    { predicate = isInteger ? CmpInst::Predicate::ICMP_SGE : CmpInst::Predicate::FCMP_OGE; isBinary = false; } break;
+        case TOKEN_LESS_THAN:                   { predicate = isInteger ? CmpInst::Predicate::ICMP_SLT : CmpInst::Predicate::FCMP_OLT; isBinary = false; } break;
+        case TOKEN_LESS_THAN_OR_EQUAL_TO:       { predicate = isInteger ? CmpInst::Predicate::ICMP_SLE : CmpInst::Predicate::FCMP_OLE; isBinary = false; } break;
 
         default: {
             return error(context, "Unimplemented operation: " + operation);
         }
     }
-
-    return BinaryOperator::Create(instruction, leftHandSide.generateCode(context), rightHandSide.generateCode(context), "", context.currentBlock());
+    if (isBinary) {
+        return BinaryOperator::Create(binaryInstruction, left, right, "", context.currentBlock());
+    } else {
+        Instruction::OtherOps otherInstruction = isInteger ? Instruction::OtherOps::ICmp : Instruction::OtherOps::FCmp;
+        return CmpInst::Create(otherInstruction, predicate, left, right, "", context.currentBlock());
+    }
 }
 
 Value* AssignmentNode::generateCode(CodeGenerationContext& context) {

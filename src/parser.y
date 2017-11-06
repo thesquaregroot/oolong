@@ -70,7 +70,7 @@
 %token <token> TOKEN_LEFT_PARENTHESIS TOKEN_RIGHT_PARENTHESIS
 %token <token> TOKEN_LEFT_BRACE TOKEN_RIGHT_BRACE TOKEN_COMMA
 %token <token> TOKEN_PERIOD TOKEN_PLUS TOKEN_MINUS TOKEN_MULTIPLY
-%token <token> TOKEN_DIVIDE TOKEN_SEMICOLON TOKEN_COLON
+%token <token> TOKEN_DIVIDE TOKEN_PERCENT TOKEN_SEMICOLON TOKEN_COLON
 %token <token> TOKEN_IF TOKEN_ELSE
 
 /* Define the type of node our nonterminal symbols represent.
@@ -279,6 +279,10 @@ expression : reference TOKEN_LEFT_PARENTHESIS function_call_argument_list TOKEN_
                     $$ = new BinaryOperatorNode(*$1, $2, *$3);
                 }
            | expression TOKEN_DIVIDE expression
+                {
+                    $$ = new BinaryOperatorNode(*$1, $2, *$3);
+                }
+           | expression TOKEN_PERCENT expression
                 {
                     $$ = new BinaryOperatorNode(*$1, $2, *$3);
                 }

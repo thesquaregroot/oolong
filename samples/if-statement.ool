@@ -1,6 +1,7 @@
 
 function main() : Integer {
-    if (true) {
+    a : Double = 2.1;
+    if (a > 2) {
         return 2;
     }
     return 1;

@@ -61,6 +61,7 @@
 "-"                                     TRACK_TOKEN_LOCATION; return TOKEN(TOKEN_MINUS);
 "*"                                     TRACK_TOKEN_LOCATION; return TOKEN(TOKEN_MULTIPLY);
 "/"                                     TRACK_TOKEN_LOCATION; return TOKEN(TOKEN_DIVIDE);
+"%"                                     TRACK_TOKEN_LOCATION; return TOKEN(TOKEN_PERCENT);
 ";"                                     TRACK_TOKEN_LOCATION; return TOKEN(TOKEN_SEMICOLON);
 ":"                                     TRACK_TOKEN_LOCATION; return TOKEN(TOKEN_COLON);
 .                                       FATAL_ERROR("Unknown token!\n");
