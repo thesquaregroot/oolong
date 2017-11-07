@@ -28,8 +28,8 @@ using namespace std;
 using namespace llvm;
 
 CodeGenerationContext::CodeGenerationContext(const string& unitName) {
-    this->llvmContext = new LLVMContext();
-    this->module = new Module(unitName, *(this->llvmContext));
+    llvmContext = new LLVMContext();
+    module = new Module(unitName, *llvmContext);
 }
 
 void CodeGenerationContext::setEmitLlvm(bool value) {
@@ -162,8 +162,14 @@ void CodeGenerationContext::setMainFunction(Function* function) {
 }
 
 void CodeGenerationContext::pushBlock(BasicBlock *block) {
-    blocks.push_back(new CodeGenerationBlock());
-    blocks.back()->block = block;
+    Value* returnVariable = nullptr;
+    if (blocks.size() > 0) {
+        returnVariable = blocks.back()->returnValue;
+    }
+    auto newBlock = new CodeGenerationBlock();
+    newBlock->block = block;
+    newBlock->returnValue = returnVariable;
+    blocks.push_back(newBlock);
 }
 
 void CodeGenerationContext::popBlock() {

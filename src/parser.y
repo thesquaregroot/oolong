@@ -92,6 +92,7 @@
 /* Operator precedence for mathematical operators */
 %left TOKEN_PLUS TOKEN_MINUS
 %left TOKEN_MULTIPLY TOKEN_DIVIDE
+%left TOKEN_PERCENT
 %nonassoc TOKEN_EQUAL_TO TOKEN_NOT_EQUAL_TO TOKEN_LESS_THAN
 %nonassoc TOKEN_LESS_THAN_OR_EQUAL_TO TOKEN_GREATER_THAN
 %nonassoc TOKEN_GREATER_THAN_OR_EQUAL_TO
@@ -252,10 +253,13 @@ literal_value : TOKEN_BOOLEAN_LITERAL
                     }
               ;
     
-expression : reference TOKEN_LEFT_PARENTHESIS function_call_argument_list TOKEN_RIGHT_PARENTHESIS
+expression : reference TOKEN_LEFT_PARENTHESIS TOKEN_RIGHT_PARENTHESIS
+                {
+                    $$ = new FunctionCallNode(*$1);
+                }
+           | reference TOKEN_LEFT_PARENTHESIS function_call_argument_list TOKEN_RIGHT_PARENTHESIS
                 {
                     $$ = new FunctionCallNode(*$1, *$3);
-                    delete $3;
                 }
            | reference
                 {
@@ -311,12 +315,8 @@ expression : reference TOKEN_LEFT_PARENTHESIS function_call_argument_list TOKEN_
                     $$ = new BinaryOperatorNode(*$1, $2, *$3);
                 }
            ;
-    
-function_call_argument_list : %empty
-                                {
-                                    $$ = new ExpressionList();
-                                }
-                            | expression
+
+function_call_argument_list : expression
                                 {
                                     $$ = new ExpressionList();
                                     $$->push_back($1);

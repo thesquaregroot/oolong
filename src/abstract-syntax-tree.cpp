@@ -58,7 +58,7 @@ static string createReferenceName(const IdentifierList& reference) {
 }
 
 /* Returns an LLVM type based on the identifier */
-static Type *typeOf(const IdentifierNode& type, LLVMContext& llvmContext)
+static Type* typeOf(const IdentifierNode& type, LLVMContext& llvmContext)
 {
     if (type.name == "Boolean") {
         return getBooleanType(llvmContext);
@@ -74,6 +74,9 @@ static Type *typeOf(const IdentifierNode& type, LLVMContext& llvmContext)
 
 /* Build a string that represents the provided type */
 static string getTypeName(Type* type) {
+    if (type == nullptr) {
+        return "[nullptr]";
+    }
     switch (type->getTypeID()) {
         case Type::TypeID::VoidTyID:        return "Void";
         case Type::TypeID::DoubleTyID:      return "Double";
@@ -218,11 +221,11 @@ Value* BinaryOperatorNode::generateCode(CodeGenerationContext& context) {
     // change isInteger if either type is a float
     if (!(leftType == integerType || leftType == doubleType)) {
         // leftType is not integer or float
-        error(context, "Unable to perform binary operation with type " + getTypeName(leftType));
+        return error(context, "Unable to perform binary operation with type " + getTypeName(leftType));
     }
     if (!(rightType == integerType || rightType == doubleType)) {
         // rightType is not integer or float
-        error(context, "Unable to perform binary operation with type " + getTypeName(rightType));
+        return error(context, "Unable to perform binary operation with type " + getTypeName(rightType));
     }
     if (leftType == doubleType || rightType == doubleType) {
         left = convertType(doubleType, left, context);
@@ -283,9 +286,11 @@ Value* ExpressionStatementNode::generateCode(CodeGenerationContext& context) {
 
 Value* ReturnStatementNode::generateCode(CodeGenerationContext& context) {
     Value *returnValue = expression.generateCode(context);
-    ReturnInst::Create(context.getLLVMContext(), returnValue, context.currentBlock());
-    context.setCurrentReturnValue(returnValue);
-    return returnValue;
+    Value *returnVariable = context.getCurrentReturnValue();
+
+    new StoreInst(returnValue, returnVariable, false, context.currentBlock());
+
+    return nullptr;
 }
 
 Value* VariableDeclarationNode::generateCode(CodeGenerationContext& context) {
@@ -295,7 +300,7 @@ Value* VariableDeclarationNode::generateCode(CodeGenerationContext& context) {
     }
     LLVMContext& llvmContext = context.getLLVMContext();
     Type* identifierType = typeOf(type, llvmContext);
-    AllocaInst *alloc = new AllocaInst(identifierType, identifierType->getPointerAddressSpace(), id.name, context.currentBlock());
+    AllocaInst *alloc = new AllocaInst(identifierType, 0 /* generic address space */, id.name, context.currentBlock());
     context.localScope()[id.name] = alloc;
     if (assignmentExpression != nullptr) {
         AssignmentNode assignmentNode(id, *assignmentExpression);
@@ -307,11 +312,11 @@ Value* VariableDeclarationNode::generateCode(CodeGenerationContext& context) {
 Value* FunctionDeclarationNode::generateCode(CodeGenerationContext& context) {
     LLVMContext& llvmContext = context.getLLVMContext();
     vector<Type*> argumentTypes;
-    VariableList::const_iterator it;
-    for (it = arguments.begin(); it != arguments.end(); it++) {
-        argumentTypes.push_back(typeOf((**it).type, llvmContext));
+    for (VariableDeclarationNode* argument : arguments) {
+        argumentTypes.push_back(typeOf(argument->type, llvmContext));
     }
-    FunctionType *ftype = FunctionType::get(typeOf(type, llvmContext), makeArrayRef(argumentTypes), false);
+    Type* returnType = typeOf(type, llvmContext);
+    FunctionType *ftype = FunctionType::get(returnType, makeArrayRef(argumentTypes), false);
     Function *function = nullptr;
     if (id.name == "main") {
         // main function, externally linked
@@ -326,25 +331,34 @@ Value* FunctionDeclarationNode::generateCode(CodeGenerationContext& context) {
 
     context.pushBlock(bblock);
 
-    // add arguments to function scope
-    Function::arg_iterator argumentValues = function->arg_begin();
-    for (it = arguments.begin(); it != arguments.end(); it++) {
-        (**it).generateCode(context);
+    // create return variable
+    if (returnType != nullptr) {
+        AllocaInst* returnVariable = new AllocaInst(returnType, 0 /* generic address space */, id.name, context.currentBlock());
+        context.setCurrentReturnValue(returnVariable);
+    }
 
-        Value* argumentValue = &*argumentValues++;
-        argumentValue->setName((*it)->id.name.c_str());
-        // don't need reference
-        new StoreInst(argumentValue, context.fullScope()[(*it)->id.name], false, bblock);
+    // add arguments to function scope
+    Function::arg_iterator argumentValueIterator = function->arg_begin();
+    for (VariableDeclarationNode* argument : arguments) {
+        string argumentName = argument->id.name;
+        argument->generateCode(context);
+
+        // associate declaration with function argument
+        Argument* argumentValue = argumentValueIterator++;
+        argumentValue->setName(argumentName);
+
+        // store value created during argument code generation
+        new StoreInst(argumentValue, context.localScope()[argumentName], false, bblock);
     }
 
     // add code for statements
     block.generateCode(context);
 
-    // add return statement to end of current block (may have changed)
-    if (context.getCurrentReturnValue() == nullptr) {
-        warning(context, "Adding implicit return instruction.");
-        ReturnInst::Create(llvmContext, nullptr, context.currentBlock());
-    }
+    // load return value and add return statement to end of current block (may have changed)
+    Value* returnValue = context.getCurrentReturnValue();
+    returnValue = new LoadInst(returnValue, "", false, context.currentBlock());
+    ReturnInst::Create(llvmContext, returnValue, context.currentBlock());
+
     context.popBlock();
 
     return function;
@@ -412,7 +426,7 @@ Value* IfStatementNode::generateCode(CodeGenerationContext& context) {
         // manually pushing back mergeBlock to keep things in order
         currentFunction->getBasicBlockList().push_back(mergeBlock);
         PHINode* phiNode = nullptr;
-        if (hasElse) {
+        if (hasElse && thenValue != nullptr && elseValue != nullptr) {
             phiNode = PHINode::Create(booleanType, 0, "iftmp", mergeBlock);
             phiNode->addIncoming(thenValue, thenBlock);
             phiNode->addIncoming(elseValue, elseBlock);
