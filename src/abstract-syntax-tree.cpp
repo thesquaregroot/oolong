@@ -275,6 +275,9 @@ Value* BlockNode::generateCode(CodeGenerationContext& context) {
     StatementList::const_iterator it;
     Value *last = nullptr;
     for (it = statements.begin(); it != statements.end(); it++) {
+        if (context.currentBlockReturns()) {
+            return error(context, "Unreachable code after return statement.");
+        }
         last = (**it).generateCode(context);
     }
     return last;
@@ -285,12 +288,9 @@ Value* ExpressionStatementNode::generateCode(CodeGenerationContext& context) {
 }
 
 Value* ReturnStatementNode::generateCode(CodeGenerationContext& context) {
-    Value *returnValue = expression.generateCode(context);
-    Value *returnVariable = context.getCurrentReturnValue();
-
-    new StoreInst(returnValue, returnVariable, false, context.currentBlock());
-
-    return nullptr;
+    Value* returnValue = expression.generateCode(context);
+    context.setCurrentReturnValue(returnValue);
+    return ReturnInst::Create(context.getLLVMContext(), returnValue, context.currentBlock());
 }
 
 Value* VariableDeclarationNode::generateCode(CodeGenerationContext& context) {
@@ -331,12 +331,6 @@ Value* FunctionDeclarationNode::generateCode(CodeGenerationContext& context) {
 
     context.pushBlock(bblock);
 
-    // create return variable
-    if (returnType != nullptr) {
-        AllocaInst* returnVariable = new AllocaInst(returnType, 0 /* generic address space */, id.name, context.currentBlock());
-        context.setCurrentReturnValue(returnVariable);
-    }
-
     // add arguments to function scope
     Function::arg_iterator argumentValueIterator = function->arg_begin();
     for (VariableDeclarationNode* argument : arguments) {
@@ -354,11 +348,10 @@ Value* FunctionDeclarationNode::generateCode(CodeGenerationContext& context) {
     // add code for statements
     block.generateCode(context);
 
-    // load return value and add return statement to end of current block (may have changed)
-    Value* returnValue = context.getCurrentReturnValue();
-    returnValue = new LoadInst(returnValue, "", false, context.currentBlock());
-    ReturnInst::Create(llvmContext, returnValue, context.currentBlock());
-
+    if (!context.currentBlockReturns()) {
+        Value* returnValue = context.getCurrentReturnValue();
+        ReturnInst::Create(llvmContext, returnValue, context.currentBlock());
+    }
     context.popBlock();
 
     return function;
@@ -410,22 +403,29 @@ Value* IfStatementNode::generateCode(CodeGenerationContext& context) {
         Value* thenValue = block.generateCode(context);
         // jump to end
         thenBlock = context.currentBlock();
-        BranchInst::Create(mergeBlock, thenBlock);
+        bool thenBlockReturns = context.currentBlockReturns();
+        if (!thenBlockReturns) {
+            BranchInst::Create(mergeBlock, thenBlock);
+        }
         context.popBlock();
 
         Value* elseValue = nullptr;
+        bool elseBlockReturns = false;
         if (hasElse) {
             context.pushBlock(elseBlock);
             elseValue = elseStatement->generateCode(context);
             // jump to end
             elseBlock = context.currentBlock();
-            BranchInst::Create(mergeBlock, elseBlock);
+            elseBlockReturns = context.currentBlockReturns();
+            if (!elseBlockReturns) {
+                BranchInst::Create(mergeBlock, elseBlock);
+            }
             context.popBlock();
         }
 
+        PHINode* phiNode = nullptr;
         // manually pushing back mergeBlock to keep things in order
         currentFunction->getBasicBlockList().push_back(mergeBlock);
-        PHINode* phiNode = nullptr;
         if (hasElse && thenValue != nullptr && elseValue != nullptr) {
             phiNode = PHINode::Create(booleanType, 0, "iftmp", mergeBlock);
             phiNode->addIncoming(thenValue, thenBlock);

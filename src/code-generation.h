@@ -18,6 +18,7 @@ public:
     llvm::BasicBlock *block;
     std::map<std::string, llvm::Value*> locals;
     llvm::Value *returnValue;
+    bool hasReturnValue = false;
 };
 
 class BlockNode;
@@ -52,6 +53,7 @@ public:
     void replaceCurrentBlock(llvm::BasicBlock* block);
     void setCurrentReturnValue(llvm::Value *value);
     llvm::Value* getCurrentReturnValue();
+    bool currentBlockReturns();
 };
 
 #endif

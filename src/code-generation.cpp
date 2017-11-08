@@ -162,13 +162,8 @@ void CodeGenerationContext::setMainFunction(Function* function) {
 }
 
 void CodeGenerationContext::pushBlock(BasicBlock *block) {
-    Value* returnVariable = nullptr;
-    if (blocks.size() > 0) {
-        returnVariable = blocks.back()->returnValue;
-    }
     auto newBlock = new CodeGenerationBlock();
     newBlock->block = block;
-    newBlock->returnValue = returnVariable;
     blocks.push_back(newBlock);
 }
 
@@ -186,9 +181,20 @@ void CodeGenerationContext::replaceCurrentBlock(BasicBlock* block) {
 
 void CodeGenerationContext::setCurrentReturnValue(Value *value) {
     blocks.back()->returnValue = value;
+    blocks.back()->hasReturnValue = true;
 }
 
 Value* CodeGenerationContext::getCurrentReturnValue() {
+    if (blocks.size() == 0) {
+        return nullptr;
+    }
     return blocks.back()->returnValue;
+}
+
+bool CodeGenerationContext::currentBlockReturns() {
+    if (blocks.size() == 0) {
+        return false;
+    }
+    return blocks.back()->hasReturnValue;
 }
 
