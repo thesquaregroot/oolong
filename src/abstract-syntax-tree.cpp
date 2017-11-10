@@ -224,7 +224,7 @@ Value* BinaryOperatorNode::generateCode(CodeGenerationContext& context) {
         return error(context, "Unable to perform binary operation with type " + getTypeName(leftType));
     }
     if (!(rightType == integerType || rightType == doubleType)) {
-        // rightType is not integer or float
+        // rightType is not integer or double
         return error(context, "Unable to perform binary operation with type " + getTypeName(rightType));
     }
     if (leftType == doubleType || rightType == doubleType) {
@@ -259,6 +259,36 @@ Value* BinaryOperatorNode::generateCode(CodeGenerationContext& context) {
         Instruction::OtherOps otherInstruction = isInteger ? Instruction::OtherOps::ICmp : Instruction::OtherOps::FCmp;
         return CmpInst::Create(otherInstruction, predicate, left, right, "", context.currentBlock());
     }
+}
+
+Value* UnaryOperatorNode::generateCode(CodeGenerationContext& context) {
+    Value* value = expression.generateCode(context);
+
+    Type* type = value->getType();
+
+    LLVMContext& llvmContext = context.getLLVMContext();
+    Type* integerType = getIntegerType(llvmContext);
+    Type* doubleType = getDoubleType(llvmContext);
+    if (!(type == integerType || type == doubleType)) {
+        // expression is not integer or double
+        return error(context, "Unable to perform unary operation with type " + getTypeName(type));
+    }
+    bool isInteger = (type == integerType);
+
+    switch (operation) {
+        case TOKEN_MINUS: {
+            // subtract from zero
+            Value* zero = isInteger ? ConstantInt::get(integerType, 0) : ConstantFP::get(doubleType, 0.0);
+            Instruction::BinaryOps instruction = isInteger ? Instruction::Sub : Instruction::FSub;
+            return BinaryOperator::Create(instruction, zero, value, "", context.currentBlock());
+        } break;
+
+        default: {
+            return error(context, "Unimplemented operation: " + operation);
+        }
+    }
+
+    return value;
 }
 
 Value* AssignmentNode::generateCode(CodeGenerationContext& context) {

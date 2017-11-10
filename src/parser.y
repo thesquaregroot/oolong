@@ -314,6 +314,10 @@ expression : reference TOKEN_LEFT_PARENTHESIS TOKEN_RIGHT_PARENTHESIS
                 {
                     $$ = new BinaryOperatorNode(*$1, $2, *$3);
                 }
+           | TOKEN_MINUS expression
+                {
+                    $$ = new UnaryOperatorNode($1, *$2);
+                }
            ;
 
 function_call_argument_list : expression

@@ -57,7 +57,12 @@ static void setYyin(FILE* fp) {
 
 static string getFileName(const string& path) {
     size_t lastSlash = path.find_last_of("/\\"); // forward or back slash
-    return path.substr(lastSlash);
+    if (lastSlash == string::npos) {
+        return path;
+    }
+    else {
+        return path.substr(lastSlash);
+    }
 }
 
 static bool isObjectFile(const string& path) {
