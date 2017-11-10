@@ -216,14 +216,15 @@ Value* BinaryOperatorNode::generateCode(CodeGenerationContext& context) {
 
     bool isInteger = true;
     LLVMContext& llvmContext = context.getLLVMContext();
+    Type* booleanType = getBooleanType(llvmContext);
     Type* integerType = getIntegerType(llvmContext);
     Type* doubleType = getDoubleType(llvmContext);
     // change isInteger if either type is a float
-    if (!(leftType == integerType || leftType == doubleType)) {
+    if (!(leftType == booleanType || leftType == integerType || leftType == doubleType)) {
         // leftType is not integer or float
         return error(context, "Unable to perform binary operation with type " + getTypeName(leftType));
     }
-    if (!(rightType == integerType || rightType == doubleType)) {
+    if (!(rightType == booleanType || rightType == integerType || rightType == doubleType)) {
         // rightType is not integer or double
         return error(context, "Unable to perform binary operation with type " + getTypeName(rightType));
     }
@@ -237,6 +238,8 @@ Value* BinaryOperatorNode::generateCode(CodeGenerationContext& context) {
     Instruction::BinaryOps binaryInstruction;
     CmpInst::Predicate predicate;
     switch (operation) {
+        case TOKEN_AND:                         { binaryInstruction = Instruction::And; } break;
+        case TOKEN_OR:                          { binaryInstruction = Instruction::Or; } break;
         case TOKEN_PLUS:                        { binaryInstruction = isInteger ? Instruction::Add : Instruction::FAdd; } break;
         case TOKEN_MINUS:                       { binaryInstruction = isInteger ? Instruction::Sub : Instruction::FSub; } break;
         case TOKEN_MULTIPLY:                    { binaryInstruction = isInteger ? Instruction::Mul : Instruction::FMul; } break;
@@ -267,20 +270,29 @@ Value* UnaryOperatorNode::generateCode(CodeGenerationContext& context) {
     Type* type = value->getType();
 
     LLVMContext& llvmContext = context.getLLVMContext();
+    Type* booleanType = getBooleanType(llvmContext);
     Type* integerType = getIntegerType(llvmContext);
     Type* doubleType = getDoubleType(llvmContext);
-    if (!(type == integerType || type == doubleType)) {
+    if (!(type == booleanType || type == integerType || type == doubleType)) {
         // expression is not integer or double
         return error(context, "Unable to perform unary operation with type " + getTypeName(type));
     }
-    bool isInteger = (type == integerType);
+    bool isInteger = (type != doubleType);
 
+    Value* zero = isInteger ? ConstantInt::get(type, 0) : ConstantFP::get(doubleType, 0.0);
     switch (operation) {
         case TOKEN_MINUS: {
             // subtract from zero
             Value* zero = isInteger ? ConstantInt::get(integerType, 0) : ConstantFP::get(doubleType, 0.0);
             Instruction::BinaryOps instruction = isInteger ? Instruction::Sub : Instruction::FSub;
             return BinaryOperator::Create(instruction, zero, value, "", context.currentBlock());
+        } break;
+
+        case TOKEN_NOT: {
+            // compare value with zero (1 == 0 -> 0, 0 == 0 -> 1)
+            Instruction::OtherOps otherInstruction = isInteger ? Instruction::OtherOps::ICmp : Instruction::OtherOps::FCmp;
+            CmpInst::Predicate predicate = isInteger ? CmpInst::Predicate::ICMP_EQ : CmpInst::Predicate::FCMP_OEQ;
+            return CmpInst::Create(otherInstruction, predicate, zero, value, "", context.currentBlock());
         } break;
 
         default: {

@@ -44,6 +44,7 @@
 [0-9]+\.[0-9]*                          TRACK_TOKEN_LOCATION; SAVE_TOKEN; return TOKEN_DOUBLE_LITERAL;
 [0-9]+                                  TRACK_TOKEN_LOCATION; SAVE_TOKEN; return TOKEN_INTEGER_LITERAL;
 \"(\\.|[^"\\])*\"                       TRACK_TOKEN_LOCATION; SAVE_TOKEN; return TOKEN_STRING_LITERAL;
+"!"                                     TRACK_TOKEN_LOCATION; return TOKEN(TOKEN_NOT);
 "="                                     TRACK_TOKEN_LOCATION; return TOKEN(TOKEN_ASSIGNMENT);
 "=="                                    TRACK_TOKEN_LOCATION; return TOKEN(TOKEN_EQUAL_TO);
 "!="                                    TRACK_TOKEN_LOCATION; return TOKEN(TOKEN_NOT_EQUAL_TO);

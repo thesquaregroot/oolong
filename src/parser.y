@@ -71,7 +71,7 @@
 %token <token> TOKEN_LEFT_BRACE TOKEN_RIGHT_BRACE TOKEN_COMMA
 %token <token> TOKEN_PERIOD TOKEN_PLUS TOKEN_MINUS TOKEN_MULTIPLY
 %token <token> TOKEN_DIVIDE TOKEN_PERCENT TOKEN_SEMICOLON TOKEN_COLON
-%token <token> TOKEN_IF TOKEN_ELSE
+%token <token> TOKEN_IF TOKEN_ELSE TOKEN_NOT
 
 /* Define the type of node our nonterminal symbols represent.
    The types refer to the %union declaration above. Ex: when
@@ -90,12 +90,13 @@
 %type <expressionList> function_call_argument_list
 
 /* Operator precedence for mathematical operators */
+%left TOKEN_OR
+%left TOKEN_AND
+%left TOKEN_EQUAL_TO TOKEN_NOT_EQUAL_TO
+%nonassoc TOKEN_LESS_THAN TOKEN_LESS_THAN_OR_EQUAL_TO TOKEN_GREATER_THAN TOKEN_GREATER_THAN_OR_EQUAL_TO
 %left TOKEN_PLUS TOKEN_MINUS
-%left TOKEN_MULTIPLY TOKEN_DIVIDE
-%left TOKEN_PERCENT
-%nonassoc TOKEN_EQUAL_TO TOKEN_NOT_EQUAL_TO TOKEN_LESS_THAN
-%nonassoc TOKEN_LESS_THAN_OR_EQUAL_TO TOKEN_GREATER_THAN
-%nonassoc TOKEN_GREATER_THAN_OR_EQUAL_TO
+%left TOKEN_MULTIPLY TOKEN_DIVIDE TOKEN_PERCENT
+%right TOKEN_NOT
 
 %start program
 
@@ -314,7 +315,19 @@ expression : reference TOKEN_LEFT_PARENTHESIS TOKEN_RIGHT_PARENTHESIS
                 {
                     $$ = new BinaryOperatorNode(*$1, $2, *$3);
                 }
+           | expression TOKEN_AND expression
+                {
+                    $$ = new BinaryOperatorNode(*$1, $2, *$3);
+                }
+           | expression TOKEN_OR expression
+                {
+                    $$ = new BinaryOperatorNode(*$1, $2, *$3);
+                }
            | TOKEN_MINUS expression
+                {
+                    $$ = new UnaryOperatorNode($1, *$2);
+                }
+           | TOKEN_NOT expression
                 {
                     $$ = new UnaryOperatorNode($1, *$2);
                 }
