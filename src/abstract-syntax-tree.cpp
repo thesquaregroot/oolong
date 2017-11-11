@@ -332,7 +332,8 @@ Value* ExpressionStatementNode::generateCode(CodeGenerationContext& context) {
 Value* ReturnStatementNode::generateCode(CodeGenerationContext& context) {
     Value* returnValue = expression.generateCode(context);
     context.setCurrentReturnValue(returnValue);
-    return ReturnInst::Create(context.getLLVMContext(), returnValue, context.currentBlock());
+    ReturnInst::Create(context.getLLVMContext(), returnValue, context.currentBlock());
+    return nullptr; // no value, so unnecessary PHINodes don't get created
 }
 
 Value* VariableDeclarationNode::generateCode(CodeGenerationContext& context) {
@@ -390,10 +391,6 @@ Value* FunctionDeclarationNode::generateCode(CodeGenerationContext& context) {
     // add code for statements
     block.generateCode(context);
 
-    if (!context.currentBlockReturns()) {
-        Value* returnValue = context.getCurrentReturnValue();
-        ReturnInst::Create(llvmContext, returnValue, context.currentBlock());
-    }
     context.popBlock();
 
     return function;
