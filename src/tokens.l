@@ -34,6 +34,7 @@
 "String"                                TRACK_TOKEN_LOCATION; return TOKEN(TOKEN_STRING);
 "if"                                    TRACK_TOKEN_LOCATION; return TOKEN(TOKEN_IF);
 "else"                                  TRACK_TOKEN_LOCATION; return TOKEN(TOKEN_ELSE);
+"while"                                 TRACK_TOKEN_LOCATION; return TOKEN(TOKEN_WHILE);
 "and"                                   TRACK_TOKEN_LOCATION; return TOKEN(TOKEN_AND);
 "&&"                                    TRACK_TOKEN_LOCATION; return TOKEN(TOKEN_AND);
 "or"                                    TRACK_TOKEN_LOCATION; return TOKEN(TOKEN_OR);

@@ -1,0 +1,16 @@
+
+// square N by summing the first N consecutive odds
+function square(N : Integer) : Integer {
+    a : Integer = 0;
+    b : Integer = 0;
+    while (a < N) {
+        b = b + (2 * a + 1);
+        a = a + 1;
+    }
+    return b;
+}
+
+function main() : Integer {
+    return square(9);
+}
+

@@ -201,5 +201,15 @@ public:
     virtual llvm::Value* generateCode(CodeGenerationContext& context);
 };
 
+class WhileLoopNode : public StatementNode {
+public:
+    WhileLoopNode(ExpressionNode* condition, BlockNode& block) : condition(condition), block(block) {}
+
+    ExpressionNode* condition = nullptr;
+    BlockNode& block;
+
+    virtual llvm::Value* generateCode(CodeGenerationContext& context);
+};
+
 #endif
 

@@ -71,7 +71,7 @@
 %token <token> TOKEN_LEFT_BRACE TOKEN_RIGHT_BRACE TOKEN_COMMA
 %token <token> TOKEN_PERIOD TOKEN_PLUS TOKEN_MINUS TOKEN_MULTIPLY
 %token <token> TOKEN_DIVIDE TOKEN_PERCENT TOKEN_SEMICOLON TOKEN_COLON
-%token <token> TOKEN_IF TOKEN_ELSE TOKEN_NOT
+%token <token> TOKEN_IF TOKEN_ELSE TOKEN_NOT TOKEN_WHILE
 
 /* Define the type of node our nonterminal symbols represent.
    The types refer to the %union declaration above. Ex: when
@@ -161,6 +161,10 @@ statement : TOKEN_IMPORT reference TOKEN_SEMICOLON
           | TOKEN_IF TOKEN_LEFT_PARENTHESIS expression TOKEN_RIGHT_PARENTHESIS block else_list
                 {
                     $$ = new IfStatementNode($3, *$5, $6);
+                }
+          | TOKEN_WHILE TOKEN_LEFT_PARENTHESIS expression TOKEN_RIGHT_PARENTHESIS block
+                {
+                    $$ = new WhileLoopNode($3, *$5);
                 }
           ;
 

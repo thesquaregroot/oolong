@@ -478,3 +478,42 @@ Value* IfStatementNode::generateCode(CodeGenerationContext& context) {
     }
 }
 
+Value* WhileLoopNode::generateCode(CodeGenerationContext& context) {
+    LLVMContext& llvmContext = context.getLLVMContext();
+    Function* currentFunction = context.currentBlock()->getParent();
+
+    BasicBlock* startBlock = BasicBlock::Create(llvmContext, "loopStart", currentFunction);
+    BasicBlock* bodyBlock = BasicBlock::Create(llvmContext, "loopBody", currentFunction);
+    BasicBlock* exitBlock = BasicBlock::Create(llvmContext, "loopExit");
+
+    // jump to loop start
+    BranchInst::Create(startBlock, context.currentBlock());
+
+    context.pushBlock(startBlock);
+    Value* expressionValue = condition->generateCode(context);
+    Type* booleanType = getBooleanType(llvmContext);
+    Value* conditionValue = convertType(booleanType, expressionValue, context);
+    if (conditionValue == nullptr) {
+        return error(context, "Conditional expression must be of type Boolean.");
+    }
+    // exit if condition is false
+    BranchInst::Create(bodyBlock, exitBlock, conditionValue, context.currentBlock());
+    context.popBlock();
+
+    context.pushBlock(bodyBlock);
+    block.generateCode(context);
+    // jump back to beginning
+    bool blockReturns = context.currentBlockReturns();
+    if (!blockReturns) {
+        BranchInst::Create(startBlock, context.currentBlock());
+    }
+    context.popBlock();
+
+    // manually pushing back exitBlock to keep things in order
+    currentFunction->getBasicBlockList().push_back(exitBlock);
+    // make exitBlock the new current block
+    context.replaceCurrentBlock(exitBlock);
+
+    return nullptr;
+}
+
