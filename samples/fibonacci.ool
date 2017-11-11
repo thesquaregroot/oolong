@@ -1,10 +1,13 @@
 
 import io;
 
-// Reads an integer in from stdin (n) and prints the n-th fibonacci number
-function main(parameters: Array<String>) : Integer {
-    Integer n = io.read("Enter a number: ", Integer);
-    Integer nFibonacci = fibonacci(n);
+/*
+ * Reads an integer in from stdin (n) and prints the n-th fibonacci number
+ */
+function main() : Integer {
+    # get number from stdin
+    n : Integer = io.read("Enter a number: ", Integer);
+    nFibonacci : Integer = fibonacci(n);
     try {
         io.print("The ", n, "-th fibonacci number is ", nFibonacci, ".");
     } catch (readonly Exception exception) {
@@ -13,7 +16,7 @@ function main(parameters: Array<String>) : Integer {
 }
 
 function fibonacci(n: readonly Integer) : Integer {
-    Integer result = 0;
+    result : Integer = 0;
     if (n < 0) {
         throw new InvalidArgumentException("Negative index are not allowed.");
     }

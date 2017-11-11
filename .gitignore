@@ -43,6 +43,7 @@ src/parser.cpp
 src/parser.output
 src/parser.hpp
 src/tokens.cpp
+src/tokens.h
 
 # generated directories
 build/

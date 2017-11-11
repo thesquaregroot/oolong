@@ -1,0 +1,7 @@
+
+import io;
+
+function main() : Integer {
+    return Integer;
+}
+

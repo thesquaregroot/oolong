@@ -1,0 +1,9 @@
+
+function main() : Integer {
+    tmp : Integer = 1;
+    if (true) {
+        tmp = tmp + 1;
+    }
+    return tmp;
+}
+

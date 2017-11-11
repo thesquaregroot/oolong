@@ -1,0 +1,12 @@
+
+import io;
+
+function main() : Integer {
+    a : Integer = 3;
+    if (true) {
+        a = a + 4;
+        return a;
+        io.print("This shouldn't print.");
+    }
+    return a;
+}

@@ -27,9 +27,17 @@
 using namespace std;
 using namespace llvm;
 
-CodeGenerationContext::CodeGenerationContext() {
-    this->llvmContext = new LLVMContext();
-    this->module = new Module("main", *(this->llvmContext));
+CodeGenerationContext::CodeGenerationContext(const string& unitName) {
+    llvmContext = new LLVMContext();
+    module = new Module(unitName, *llvmContext);
+}
+
+void CodeGenerationContext::setEmitLlvm(bool value) {
+    emitLlvm = value;
+}
+
+void CodeGenerationContext::setOutputName(const string& value) {
+    outputName = value;
 }
 
 // Compile the AST into a module
@@ -44,10 +52,13 @@ int CodeGenerationContext::generateCode(BlockNode& root) {
     if (intermediateRepresentation.length() == 0) {
         return 1;
     } else {
-        ofstream outputFile("output.ll");
-        outputFile << intermediateRepresentation;
-        outputFile.flush();
-        outputFile.close();
+        if (emitLlvm) {
+            const string llFileName = (module->getName() + ".ll").str();
+            ofstream outputFile(llFileName);
+            outputFile << intermediateRepresentation;
+            outputFile.flush();
+            outputFile.close();
+        }
     }
 
     // Initialize the target registry etc.
@@ -80,9 +91,8 @@ int CodeGenerationContext::generateCode(BlockNode& root) {
 
     module->setDataLayout(targetMachine->createDataLayout());
 
-    auto filename = "output.o";
     std::error_code errorCode;
-    raw_fd_ostream dest(filename, errorCode, sys::fs::F_None);
+    raw_fd_ostream dest(outputName, errorCode, sys::fs::F_None);
 
     legacy::PassManager pass;
     auto fileType = TargetMachine::CGFT_ObjectFile;
@@ -109,16 +119,30 @@ GenericValue CodeGenerationContext::runCode() {
 	return v;
 }
 
-std::map<std::string, Value*>& CodeGenerationContext::locals() {
-    return blocks.top()->locals;
+map<string, Value*>& CodeGenerationContext::localScope() {
+    return blocks.back()->locals;
+}
+
+map<string, Value*> CodeGenerationContext::fullScope() {
+    map<string, Value*> scope;
+
+    // const iterate over block in reverse over, adding locals to scope
+    auto blockIterator = blocks.crbegin();
+    while (blockIterator != blocks.crend()) {
+        auto block = *blockIterator;
+        scope.insert(block->locals.begin(), block->locals.end());
+        blockIterator++;
+    }
+
+    return std::move(scope);
 }
 
 BasicBlock* CodeGenerationContext::currentBlock() {
-    return blocks.top()->block;
+    return blocks.back()->block;
 }
 
 Function* CodeGenerationContext::currentFunction() {
-    return blocks.top()->block->getParent();
+    return blocks.back()->block->getParent();
 }
 
 LLVMContext& CodeGenerationContext::getLLVMContext() {
@@ -138,27 +162,39 @@ void CodeGenerationContext::setMainFunction(Function* function) {
 }
 
 void CodeGenerationContext::pushBlock(BasicBlock *block) {
-    blocks.push(new CodeGenerationBlock());
-    blocks.top()->block = block;
+    auto newBlock = new CodeGenerationBlock();
+    newBlock->block = block;
+    blocks.push_back(newBlock);
 }
 
 void CodeGenerationContext::popBlock() {
-    CodeGenerationBlock *top = blocks.top();
-    blocks.pop();
-    delete top;
+    CodeGenerationBlock* back = blocks.back();
+    blocks.pop_back();
+    delete back;
 }
 
 void CodeGenerationContext::replaceCurrentBlock(BasicBlock* block) {
-    CodeGenerationBlock* top = blocks.top();
+    CodeGenerationBlock* back = blocks.back();
     // replace BasicBlock but leave locals, etc.
-    top->block = block;
+    back->block = block;
 }
 
 void CodeGenerationContext::setCurrentReturnValue(Value *value) {
-    blocks.top()->returnValue = value;
+    blocks.back()->returnValue = value;
+    blocks.back()->hasReturnValue = true;
 }
 
 Value* CodeGenerationContext::getCurrentReturnValue() {
-    return blocks.top()->returnValue;
+    if (blocks.size() == 0) {
+        return nullptr;
+    }
+    return blocks.back()->returnValue;
+}
+
+bool CodeGenerationContext::currentBlockReturns() {
+    if (blocks.size() == 0) {
+        return false;
+    }
+    return blocks.back()->hasReturnValue;
 }
 

@@ -4,12 +4,18 @@
 %{
     #define YYDEBUG 1
     #include "abstract-syntax-tree.h"
+    #include "tokens.h"
     #include <stdio.h>
+
     BlockNode* programNode; /* the top level root node of our final AST */
 
     extern int yylex();
+    extern int tokenStart;
+    extern int tokenEnd;
+    extern const char* currentParseFile;
+
     void yyerror(const char *s) {
-        printf("ERROR: %s\n", s);
+        fprintf(stderr, "ERROR: In file %s (line %d: %d-%d): %s\n", currentParseFile, yylineno, tokenStart, tokenEnd, s);
     }
 
     void replaceAll(std::string& value, const std::string substring, const std::string replacement) {
@@ -64,8 +70,8 @@
 %token <token> TOKEN_LEFT_PARENTHESIS TOKEN_RIGHT_PARENTHESIS
 %token <token> TOKEN_LEFT_BRACE TOKEN_RIGHT_BRACE TOKEN_COMMA
 %token <token> TOKEN_PERIOD TOKEN_PLUS TOKEN_MINUS TOKEN_MULTIPLY
-%token <token> TOKEN_DIVIDE TOKEN_SEMICOLON TOKEN_COLON
-%token <token> TOKEN_IF TOKEN_ELSE
+%token <token> TOKEN_DIVIDE TOKEN_PERCENT TOKEN_SEMICOLON TOKEN_COLON
+%token <token> TOKEN_IF TOKEN_ELSE TOKEN_NOT
 
 /* Define the type of node our nonterminal symbols represent.
    The types refer to the %union declaration above. Ex: when
@@ -84,11 +90,13 @@
 %type <expressionList> function_call_argument_list
 
 /* Operator precedence for mathematical operators */
+%left TOKEN_OR
+%left TOKEN_AND
+%left TOKEN_EQUAL_TO TOKEN_NOT_EQUAL_TO
+%nonassoc TOKEN_LESS_THAN TOKEN_LESS_THAN_OR_EQUAL_TO TOKEN_GREATER_THAN TOKEN_GREATER_THAN_OR_EQUAL_TO
 %left TOKEN_PLUS TOKEN_MINUS
-%left TOKEN_MULTIPLY TOKEN_DIVIDE
-%nonassoc TOKEN_EQUAL_TO TOKEN_NOT_EQUAL_TO TOKEN_LESS_THAN
-%nonassoc TOKEN_LESS_THAN_OR_EQUAL_TO TOKEN_GREATER_THAN
-%nonassoc TOKEN_GREATER_THAN_OR_EQUAL_TO
+%left TOKEN_MULTIPLY TOKEN_DIVIDE TOKEN_PERCENT
+%right TOKEN_NOT
 
 %start program
 
@@ -185,15 +193,19 @@ else_list : TOKEN_ELSE block
                 {
                     $$ = new IfStatementNode(nullptr, *$2);
                 }
-          | TOKEN_ELSE TOKEN_LEFT_PARENTHESIS expression TOKEN_RIGHT_PARENTHESIS block
+          | else_if TOKEN_LEFT_PARENTHESIS expression TOKEN_RIGHT_PARENTHESIS block
                 {
                     $$ = new IfStatementNode($3, *$5);
                 }
-          | TOKEN_ELSE TOKEN_LEFT_PARENTHESIS expression TOKEN_RIGHT_PARENTHESIS block else_list
+          | else_if TOKEN_LEFT_PARENTHESIS expression TOKEN_RIGHT_PARENTHESIS block else_list
                 {
                     $$ = new IfStatementNode($3, *$5, $6);
                 }
           ;
+
+else_if : TOKEN_ELSE
+        | TOKEN_ELSE TOKEN_IF
+        ;
 
 variable_declaration : identifier TOKEN_COLON type
                         {
@@ -246,10 +258,13 @@ literal_value : TOKEN_BOOLEAN_LITERAL
                     }
               ;
     
-expression : reference TOKEN_LEFT_PARENTHESIS function_call_argument_list TOKEN_RIGHT_PARENTHESIS
+expression : reference TOKEN_LEFT_PARENTHESIS TOKEN_RIGHT_PARENTHESIS
+                {
+                    $$ = new FunctionCallNode(*$1);
+                }
+           | reference TOKEN_LEFT_PARENTHESIS function_call_argument_list TOKEN_RIGHT_PARENTHESIS
                 {
                     $$ = new FunctionCallNode(*$1, *$3);
-                    delete $3;
                 }
            | reference
                 {
@@ -273,6 +288,10 @@ expression : reference TOKEN_LEFT_PARENTHESIS function_call_argument_list TOKEN_
                     $$ = new BinaryOperatorNode(*$1, $2, *$3);
                 }
            | expression TOKEN_DIVIDE expression
+                {
+                    $$ = new BinaryOperatorNode(*$1, $2, *$3);
+                }
+           | expression TOKEN_PERCENT expression
                 {
                     $$ = new BinaryOperatorNode(*$1, $2, *$3);
                 }
@@ -300,13 +319,25 @@ expression : reference TOKEN_LEFT_PARENTHESIS function_call_argument_list TOKEN_
                 {
                     $$ = new BinaryOperatorNode(*$1, $2, *$3);
                 }
+           | expression TOKEN_AND expression
+                {
+                    $$ = new BinaryOperatorNode(*$1, $2, *$3);
+                }
+           | expression TOKEN_OR expression
+                {
+                    $$ = new BinaryOperatorNode(*$1, $2, *$3);
+                }
+           | TOKEN_MINUS expression
+                {
+                    $$ = new UnaryOperatorNode($1, *$2);
+                }
+           | TOKEN_NOT expression
+                {
+                    $$ = new UnaryOperatorNode($1, *$2);
+                }
            ;
-    
-function_call_argument_list : %empty
-                                {
-                                    $$ = new ExpressionList();
-                                }
-                            | expression
+
+function_call_argument_list : expression
                                 {
                                     $$ = new ExpressionList();
                                     $$->push_back($1);

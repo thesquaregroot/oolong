@@ -1,7 +1,7 @@
 #ifndef CODE_GENERATION_H
 #define CODE_GENERATION_H
 
-#include <stack>
+#include <deque>
 #include <map>
 
 namespace llvm {
@@ -18,23 +18,30 @@ public:
     llvm::BasicBlock *block;
     std::map<std::string, llvm::Value*> locals;
     llvm::Value *returnValue;
+    bool hasReturnValue = false;
 };
 
 class BlockNode;
 
 class CodeGenerationContext {
 private:
+    bool emitLlvm = false;
+    std::string outputName;
     llvm::LLVMContext *llvmContext;
     llvm::Module *module;
-    std::stack<CodeGenerationBlock*> blocks;
+    std::deque<CodeGenerationBlock*> blocks; // deque instead of stack to allow or iteration
     llvm::Function *mainFunction;
 
 public:
-    CodeGenerationContext();
+    CodeGenerationContext(const std::string& unitName);
+
+    void setEmitLlvm(bool value);
+    void setOutputName(const std::string& value);
 
     int generateCode(BlockNode& root);
     llvm::GenericValue runCode();
-    std::map<std::string, llvm::Value*>& locals();
+    std::map<std::string, llvm::Value*>& localScope();
+    std::map<std::string, llvm::Value*> fullScope();
     llvm::BasicBlock *currentBlock();
     llvm::Function* currentFunction();
     llvm::LLVMContext& getLLVMContext();
@@ -46,6 +53,7 @@ public:
     void replaceCurrentBlock(llvm::BasicBlock* block);
     void setCurrentReturnValue(llvm::Value *value);
     llvm::Value* getCurrentReturnValue();
+    bool currentBlockReturns();
 };
 
 #endif

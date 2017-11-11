@@ -109,6 +109,16 @@ public:
     virtual llvm::Value* generateCode(CodeGenerationContext& context);
 };
 
+class UnaryOperatorNode : public ExpressionNode {
+public:
+    UnaryOperatorNode(int operation, ExpressionNode& expression) : operation(operation), expression(expression) {}
+
+    int operation;
+    ExpressionNode& expression;
+
+    virtual llvm::Value* generateCode(CodeGenerationContext& context);
+};
+
 class AssignmentNode : public StatementNode {
 public:
     AssignmentNode(IdentifierNode& leftHandSide, ExpressionNode& rightHandSide) : leftHandSide(leftHandSide), rightHandSide(rightHandSide) {}
@@ -184,9 +194,9 @@ public:
     IfStatementNode(ExpressionNode* condition, BlockNode& block) : condition(condition), block(block) {}
     IfStatementNode(ExpressionNode* condition, BlockNode& block, IfStatementNode* elseStatement) : condition(condition), block(block), elseStatement(elseStatement) {}
 
-    ExpressionNode* condition;
+    ExpressionNode* condition = nullptr;
     BlockNode& block;
-    IfStatementNode* elseStatement;
+    IfStatementNode* elseStatement = nullptr;
 
     virtual llvm::Value* generateCode(CodeGenerationContext& context);
 };

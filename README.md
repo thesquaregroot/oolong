@@ -26,9 +26,9 @@ Build the project using:
 
 Compile Oolong files using:
 
-    ./compile.sh <path-to-file>
+    ./oolong <path-to-file>
 
-(e.g. `./compile.sh samples/hello-world.ool`).
+(e.g. `./oolong samples/hello-world.ool`).
 
 Then run the output program via:
 

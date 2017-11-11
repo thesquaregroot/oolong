@@ -18,21 +18,31 @@
 using namespace std;
 using namespace llvm;
 
+extern const char* currentParseFile;
+
 static const string FUNCTION_PACKAGE_SEPARATOR = "___";
 
 static Value* warning(CodeGenerationContext& context, const string& warningMessage) {
-    cerr << "warning: In function " << context.currentFunction()->getName().str() << ": " << warningMessage << endl;
+    cerr << "warning: In file " << currentParseFile << ", function " << context.currentFunction()->getName().str() << ": " << warningMessage << endl;
     return nullptr;
 }
 
 static Value* error(CodeGenerationContext& context, const string& errorMessage) {
-    const string fullError =  "In function " + context.currentFunction()->getName().str() + ": " + errorMessage;
+    const string fullError =  "In file " + string(currentParseFile) +  ", function " + context.currentFunction()->getName().str() + ": " + errorMessage;
     context.getLLVMContext().emitError(fullError);
     return nullptr;
 }
 
 static Type* getBooleanType(LLVMContext& llvmContext) {
-    return IntegerType::get(llvmContext, 1);
+    return Type::getInt1Ty(llvmContext);
+}
+
+static Type* getIntegerType(LLVMContext& llvmContext) {
+    return Type::getInt64Ty(llvmContext);
+}
+
+static Type* getDoubleType(LLVMContext& llvmContext) {
+    return Type::getDoubleTy(llvmContext);
 }
 
 /* Return the fully formed reference name (joined with periods) */
@@ -48,22 +58,25 @@ static string createReferenceName(const IdentifierList& reference) {
 }
 
 /* Returns an LLVM type based on the identifier */
-static Type *typeOf(const IdentifierNode& type, LLVMContext& llvmContext)
+static Type* typeOf(const IdentifierNode& type, LLVMContext& llvmContext)
 {
     if (type.name == "Boolean") {
-        return Type::getInt1Ty(llvmContext);
+        return getBooleanType(llvmContext);
     }
     else if (type.name == "Integer") {
-		return Type::getInt64Ty(llvmContext);
-	}
-	else if (type.name == "Double") {
-		return Type::getDoubleTy(llvmContext);
-	}
-	return Type::getVoidTy(llvmContext);
+        return getIntegerType(llvmContext);
+    }
+    else if (type.name == "Double") {
+        return getDoubleType(llvmContext);
+    }
+    return Type::getVoidTy(llvmContext);
 }
 
 /* Build a string that represents the provided type */
 static string getTypeName(Type* type) {
+    if (type == nullptr) {
+        return "[nullptr]";
+    }
     switch (type->getTypeID()) {
         case Type::TypeID::VoidTyID:        return "Void";
         case Type::TypeID::DoubleTyID:      return "Double";
@@ -96,6 +109,19 @@ static Value* convertType(Type* targetType, Value* value, CodeGenerationContext&
     }
 
     LLVMContext& llvmContext = context.getLLVMContext();
+
+    Type* integerType = getIntegerType(llvmContext);
+    Type* doubleType = getDoubleType(llvmContext);
+
+    // double target
+    if (targetType == doubleType) {
+        // convert Integer to Double
+        if (valueType == integerType) {
+            CastInst* cast = new SIToFPInst(value, doubleType, "", context.currentBlock());
+            return cast;
+        }
+    }
+
     // char* target
     if (targetType->getTypeID() == Type::TypeID::PointerTyID && targetType->getPointerElementType()->getTypeID() == Type::TypeID::IntegerTyID) {
         // convert String to char*
@@ -126,11 +152,11 @@ Value* BooleanNode::generateCode(CodeGenerationContext& context) {
 }
 
 Value* IntegerNode::generateCode(CodeGenerationContext& context) {
-	return ConstantInt::get(Type::getInt64Ty(context.getLLVMContext()), value, true);
+    return ConstantInt::get(Type::getInt64Ty(context.getLLVMContext()), value, true);
 }
 
 Value* DoubleNode::generateCode(CodeGenerationContext& context) {
-	return ConstantFP::get(Type::getDoubleTy(context.getLLVMContext()), value);
+    return ConstantFP::get(Type::getDoubleTy(context.getLLVMContext()), value);
 }
 
 Value* StringNode::generateCode(CodeGenerationContext& context) {
@@ -139,147 +165,235 @@ Value* StringNode::generateCode(CodeGenerationContext& context) {
 }
 
 Value* IdentifierNode::generateCode(CodeGenerationContext& context) {
-	if (context.locals().find(name) == context.locals().end()) {
-		return error(context, "Undeclared variable " + name);
-	}
-	return new LoadInst(context.locals()[name], "", false, context.currentBlock());
+    auto scope = context.fullScope();
+    if (scope.find(name) == scope.end()) {
+        return error(context, "Undeclared variable " + name);
+    }
+    return new LoadInst(scope[name], "", false, context.currentBlock());
 }
 
 Value* ReferenceNode::generateCode(CodeGenerationContext& context) {
     const string name = createReferenceName(reference);
-	if (context.locals().find(name) == context.locals().end()) {
-		return error(context, "Undeclared variable " + name);
-	}
-	return new LoadInst(context.locals()[name], "", false, context.currentBlock());
+    auto scope = context.fullScope();
+    if (scope.find(name) == scope.end()) {
+        return error(context, "Undeclared variable " + name);
+    }
+    return new LoadInst(scope[name], "", false, context.currentBlock());
 }
 
 Value* FunctionCallNode::generateCode(CodeGenerationContext& context) {
     const string functionName = createReferenceName(reference);
-	Function *function = context.getModule()->getFunction(functionName);
-	if (function == nullptr) {
-		return error(context, "No such function: " + functionName);
-	}
-	vector<Value*> callingArguments;
-	ExpressionList::const_iterator callIt = arguments.begin();
+    Function *function = context.getModule()->getFunction(functionName);
+    if (function == nullptr) {
+        return error(context, "No such function: " + functionName);
+    }
+    vector<Value*> callingArguments;
+    ExpressionList::const_iterator callIt = arguments.begin();
     auto declaredIt = function->arg_begin();
     size_t position = 1;
-	while (callIt != arguments.end()) {
+    while (callIt != arguments.end()) {
         Argument* declaredArgument = declaredIt;
         Value* callingArgument = (*callIt)->generateCode(context);
         Value* convertedArgument = convertType(declaredArgument->getType(), callingArgument, context);
         if (convertedArgument == nullptr) {
             return error(context, "Invalid argument for function " + functionName + " (position " + to_string(position) + ")");
         }
-		callingArguments.push_back(convertedArgument);
+        callingArguments.push_back(convertedArgument);
         callIt++;
         declaredIt++;
         position++;
-	}
-	CallInst *call = CallInst::Create(function, makeArrayRef(callingArguments), "", context.currentBlock());
-	return call;
+    }
+    CallInst *call = CallInst::Create(function, makeArrayRef(callingArguments), "", context.currentBlock());
+    return call;
 }
 
 Value* BinaryOperatorNode::generateCode(CodeGenerationContext& context) {
-	Instruction::BinaryOps instruction;
-	switch (operation) {
-		case TOKEN_PLUS: 	    { instruction = Instruction::Add; } break;
-		case TOKEN_MINUS: 	    { instruction = Instruction::Sub; } break;
-		case TOKEN_MULTIPLY:    { instruction = Instruction::Mul; } break;
-		case TOKEN_DIVIDE: 	    { instruction = Instruction::SDiv; } break;
+    Value* left = leftHandSide.generateCode(context);
+    Value* right = rightHandSide.generateCode(context);
 
-		/* TODO: comparisons */
+    Type* leftType = left->getType();
+    Type* rightType = right->getType();
+
+    bool isInteger = true;
+    LLVMContext& llvmContext = context.getLLVMContext();
+    Type* booleanType = getBooleanType(llvmContext);
+    Type* integerType = getIntegerType(llvmContext);
+    Type* doubleType = getDoubleType(llvmContext);
+    // change isInteger if either type is a float
+    if (!(leftType == booleanType || leftType == integerType || leftType == doubleType)) {
+        // leftType is not integer or float
+        return error(context, "Unable to perform binary operation with type " + getTypeName(leftType));
+    }
+    if (!(rightType == booleanType || rightType == integerType || rightType == doubleType)) {
+        // rightType is not integer or double
+        return error(context, "Unable to perform binary operation with type " + getTypeName(rightType));
+    }
+    if (leftType == doubleType || rightType == doubleType) {
+        left = convertType(doubleType, left, context);
+        right = convertType(doubleType, right, context);
+        isInteger = false;
+    }
+
+    bool isBinary = true;
+    Instruction::BinaryOps binaryInstruction;
+    CmpInst::Predicate predicate;
+    switch (operation) {
+        case TOKEN_AND:                         { binaryInstruction = Instruction::And; } break;
+        case TOKEN_OR:                          { binaryInstruction = Instruction::Or; } break;
+        case TOKEN_PLUS:                        { binaryInstruction = isInteger ? Instruction::Add : Instruction::FAdd; } break;
+        case TOKEN_MINUS:                       { binaryInstruction = isInteger ? Instruction::Sub : Instruction::FSub; } break;
+        case TOKEN_MULTIPLY:                    { binaryInstruction = isInteger ? Instruction::Mul : Instruction::FMul; } break;
+        case TOKEN_DIVIDE:                      { binaryInstruction = isInteger ? Instruction::SDiv : Instruction::FDiv; } break;
+        case TOKEN_PERCENT:                     { binaryInstruction = isInteger ? Instruction::SRem : Instruction::FRem; } break;
+        case TOKEN_EQUAL_TO:                    { predicate = isInteger ? CmpInst::Predicate::ICMP_EQ : CmpInst::Predicate::FCMP_OEQ; isBinary = false; } break;
+        case TOKEN_NOT_EQUAL_TO:                { predicate = isInteger ? CmpInst::Predicate::ICMP_NE : CmpInst::Predicate::FCMP_ONE; isBinary = false; } break;
+        case TOKEN_GREATER_THAN:                { predicate = isInteger ? CmpInst::Predicate::ICMP_SGT : CmpInst::Predicate::FCMP_OGT; isBinary = false; } break;
+        case TOKEN_GREATER_THAN_OR_EQUAL_TO:    { predicate = isInteger ? CmpInst::Predicate::ICMP_SGE : CmpInst::Predicate::FCMP_OGE; isBinary = false; } break;
+        case TOKEN_LESS_THAN:                   { predicate = isInteger ? CmpInst::Predicate::ICMP_SLT : CmpInst::Predicate::FCMP_OLT; isBinary = false; } break;
+        case TOKEN_LESS_THAN_OR_EQUAL_TO:       { predicate = isInteger ? CmpInst::Predicate::ICMP_SLE : CmpInst::Predicate::FCMP_OLE; isBinary = false; } break;
 
         default: {
             return error(context, "Unimplemented operation: " + operation);
         }
-	}
+    }
+    if (isBinary) {
+        return BinaryOperator::Create(binaryInstruction, left, right, "", context.currentBlock());
+    } else {
+        Instruction::OtherOps otherInstruction = isInteger ? Instruction::OtherOps::ICmp : Instruction::OtherOps::FCmp;
+        return CmpInst::Create(otherInstruction, predicate, left, right, "", context.currentBlock());
+    }
+}
 
-	return BinaryOperator::Create(instruction, leftHandSide.generateCode(context), rightHandSide.generateCode(context), "", context.currentBlock());
+Value* UnaryOperatorNode::generateCode(CodeGenerationContext& context) {
+    Value* value = expression.generateCode(context);
+
+    Type* type = value->getType();
+
+    LLVMContext& llvmContext = context.getLLVMContext();
+    Type* booleanType = getBooleanType(llvmContext);
+    Type* integerType = getIntegerType(llvmContext);
+    Type* doubleType = getDoubleType(llvmContext);
+    if (!(type == booleanType || type == integerType || type == doubleType)) {
+        // expression is not integer or double
+        return error(context, "Unable to perform unary operation with type " + getTypeName(type));
+    }
+    bool isInteger = (type != doubleType);
+
+    Value* zero = isInteger ? ConstantInt::get(type, 0) : ConstantFP::get(doubleType, 0.0);
+    switch (operation) {
+        case TOKEN_MINUS: {
+            // subtract from zero
+            Value* zero = isInteger ? ConstantInt::get(integerType, 0) : ConstantFP::get(doubleType, 0.0);
+            Instruction::BinaryOps instruction = isInteger ? Instruction::Sub : Instruction::FSub;
+            return BinaryOperator::Create(instruction, zero, value, "", context.currentBlock());
+        } break;
+
+        case TOKEN_NOT: {
+            // compare value with zero (1 == 0 -> 0, 0 == 0 -> 1)
+            Instruction::OtherOps otherInstruction = isInteger ? Instruction::OtherOps::ICmp : Instruction::OtherOps::FCmp;
+            CmpInst::Predicate predicate = isInteger ? CmpInst::Predicate::ICMP_EQ : CmpInst::Predicate::FCMP_OEQ;
+            return CmpInst::Create(otherInstruction, predicate, zero, value, "", context.currentBlock());
+        } break;
+
+        default: {
+            return error(context, "Unimplemented operation: " + operation);
+        }
+    }
+
+    return value;
 }
 
 Value* AssignmentNode::generateCode(CodeGenerationContext& context) {
-	if (context.locals().find(leftHandSide.name) == context.locals().end()) {
-		return error(context, "Undeclared variable " + leftHandSide.name);
-	}
-	return new StoreInst(rightHandSide.generateCode(context), context.locals()[leftHandSide.name], false, context.currentBlock());
+    auto scope = context.fullScope();
+    if (scope.find(leftHandSide.name) == scope.end()) {
+        return error(context, "Undeclared variable " + leftHandSide.name);
+    }
+    Value* variable = scope[leftHandSide.name];
+    Value* value = rightHandSide.generateCode(context);
+    return new StoreInst(value, variable, false, context.currentBlock());
 }
 
 Value* BlockNode::generateCode(CodeGenerationContext& context) {
-	StatementList::const_iterator it;
-	Value *last = nullptr;
-	for (it = statements.begin(); it != statements.end(); it++) {
-		last = (**it).generateCode(context);
-	}
-	return last;
+    StatementList::const_iterator it;
+    Value *last = nullptr;
+    for (it = statements.begin(); it != statements.end(); it++) {
+        if (context.currentBlockReturns()) {
+            return error(context, "Unreachable code after return statement.");
+        }
+        last = (**it).generateCode(context);
+    }
+    return last;
 }
 
 Value* ExpressionStatementNode::generateCode(CodeGenerationContext& context) {
-	return expression.generateCode(context);
+    return expression.generateCode(context);
 }
 
 Value* ReturnStatementNode::generateCode(CodeGenerationContext& context) {
-	Value *returnValue = expression.generateCode(context);
-	ReturnInst::Create(context.getLLVMContext(), returnValue, context.currentBlock());
-	context.setCurrentReturnValue(returnValue);
-	return returnValue;
+    Value* returnValue = expression.generateCode(context);
+    context.setCurrentReturnValue(returnValue);
+    ReturnInst::Create(context.getLLVMContext(), returnValue, context.currentBlock());
+    return nullptr; // no value, so unnecessary PHINodes don't get created
 }
 
 Value* VariableDeclarationNode::generateCode(CodeGenerationContext& context) {
+    auto scope = context.fullScope();
+    if (scope.find(id.name) != scope.end()) {
+        return error(context, "Redeclaration of variable " + id.name);
+    }
     LLVMContext& llvmContext = context.getLLVMContext();
     Type* identifierType = typeOf(type, llvmContext);
-	AllocaInst *alloc = new AllocaInst(identifierType, identifierType->getPointerAddressSpace(), id.name, context.currentBlock());
-	context.locals()[id.name] = alloc;
-	if (assignmentExpression != NULL) {
-		AssignmentNode assn(id, *assignmentExpression);
-		assn.generateCode(context);
-	}
-	return alloc;
+    AllocaInst *alloc = new AllocaInst(identifierType, 0 /* generic address space */, id.name, context.currentBlock());
+    context.localScope()[id.name] = alloc;
+    if (assignmentExpression != nullptr) {
+        AssignmentNode assignmentNode(id, *assignmentExpression);
+        assignmentNode.generateCode(context);
+    }
+    return alloc;
 }
 
 Value* FunctionDeclarationNode::generateCode(CodeGenerationContext& context) {
     LLVMContext& llvmContext = context.getLLVMContext();
-	vector<Type*> argumentTypes;
-	VariableList::const_iterator it;
-	for (it = arguments.begin(); it != arguments.end(); it++) {
-		argumentTypes.push_back(typeOf((**it).type, llvmContext));
-	}
-	FunctionType *ftype = FunctionType::get(typeOf(type, llvmContext), makeArrayRef(argumentTypes), false);
+    vector<Type*> argumentTypes;
+    for (VariableDeclarationNode* argument : arguments) {
+        argumentTypes.push_back(typeOf(argument->type, llvmContext));
+    }
+    Type* returnType = typeOf(type, llvmContext);
+    FunctionType *ftype = FunctionType::get(returnType, makeArrayRef(argumentTypes), false);
     Function *function = nullptr;
     if (id.name == "main") {
         // main function, externally linked
-	    function = Function::Create(ftype, GlobalValue::ExternalLinkage, id.name.c_str(), context.getModule());
+        function = Function::Create(ftype, GlobalValue::ExternalLinkage, id.name.c_str(), context.getModule());
         context.setMainFunction(function);
     }
     else {
         // normal function, internally linked
-	    function = Function::Create(ftype, GlobalValue::InternalLinkage, id.name.c_str(), context.getModule());
+        function = Function::Create(ftype, GlobalValue::InternalLinkage, id.name.c_str(), context.getModule());
     }
     BasicBlock *bblock = BasicBlock::Create(llvmContext, "entry", function, 0);
 
-	context.pushBlock(bblock);
+    context.pushBlock(bblock);
 
     // add arguments to function scope
-	Function::arg_iterator argumentValues = function->arg_begin();
-	for (it = arguments.begin(); it != arguments.end(); it++) {
-		(**it).generateCode(context);
+    Function::arg_iterator argumentValueIterator = function->arg_begin();
+    for (VariableDeclarationNode* argument : arguments) {
+        string argumentName = argument->id.name;
+        argument->generateCode(context);
 
-        Value* argumentValue = &*argumentValues++;
-		argumentValue->setName((*it)->id.name.c_str());
-        // don't need reference
-		new StoreInst(argumentValue, context.locals()[(*it)->id.name], false, bblock);
-	}
+        // associate declaration with function argument
+        Argument* argumentValue = argumentValueIterator++;
+        argumentValue->setName(argumentName);
+
+        // store value created during argument code generation
+        new StoreInst(argumentValue, context.localScope()[argumentName], false, bblock);
+    }
 
     // add code for statements
-	block.generateCode(context);
+    block.generateCode(context);
 
-    // add return statement to end of current block (may have changed)
-    if (context.getCurrentReturnValue() == nullptr) {
-        warning(context, "Adding implicit return instruction.");
-	    ReturnInst::Create(llvmContext, nullptr, context.currentBlock());
-    }
     context.popBlock();
 
-	return function;
+    return function;
 }
 
 Value* ImportStatementNode::generateCode(CodeGenerationContext& context) {
@@ -328,23 +442,30 @@ Value* IfStatementNode::generateCode(CodeGenerationContext& context) {
         Value* thenValue = block.generateCode(context);
         // jump to end
         thenBlock = context.currentBlock();
-        BranchInst::Create(mergeBlock, thenBlock);
+        bool thenBlockReturns = context.currentBlockReturns();
+        if (!thenBlockReturns) {
+            BranchInst::Create(mergeBlock, thenBlock);
+        }
         context.popBlock();
 
         Value* elseValue = nullptr;
+        bool elseBlockReturns = false;
         if (hasElse) {
             context.pushBlock(elseBlock);
             elseValue = elseStatement->generateCode(context);
             // jump to end
             elseBlock = context.currentBlock();
-            BranchInst::Create(mergeBlock, elseBlock);
+            elseBlockReturns = context.currentBlockReturns();
+            if (!elseBlockReturns) {
+                BranchInst::Create(mergeBlock, elseBlock);
+            }
             context.popBlock();
         }
 
+        PHINode* phiNode = nullptr;
         // manually pushing back mergeBlock to keep things in order
         currentFunction->getBasicBlockList().push_back(mergeBlock);
-        PHINode* phiNode = nullptr;
-        if (hasElse) {
+        if (hasElse && thenValue != nullptr && elseValue != nullptr) {
             phiNode = PHINode::Create(booleanType, 0, "iftmp", mergeBlock);
             phiNode->addIncoming(thenValue, thenBlock);
             phiNode->addIncoming(elseValue, elseBlock);
