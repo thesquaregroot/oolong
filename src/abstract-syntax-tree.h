@@ -77,12 +77,22 @@ public:
     virtual llvm::Value* generateCode(CodeGenerationContext& context);
 };
 
+class AssignableNode : public ExpressionNode {
+public:
+    AssignableNode(IdentifierNode& identifier) : identifier(identifier) {}
+
+    IdentifierNode& identifier;
+
+    virtual llvm::Value* generateCode(CodeGenerationContext& context);
+};
 
 class ReferenceNode : public ExpressionNode {
 public:
+    ReferenceNode(IdentifierNode& identifier) { reference.push_back(&identifier); }
+    ReferenceNode(AssignableNode& assignable) { reference.push_back(&assignable.identifier); }
     ReferenceNode(const IdentifierList& reference) : reference(reference) {}
 
-    const IdentifierList& reference;
+    IdentifierList reference;
 
     virtual llvm::Value* generateCode(CodeGenerationContext& context);
 };
@@ -121,9 +131,9 @@ public:
 
 class AssignmentNode : public StatementNode {
 public:
-    AssignmentNode(IdentifierNode& leftHandSide, ExpressionNode& rightHandSide) : leftHandSide(leftHandSide), rightHandSide(rightHandSide) {}
+    AssignmentNode(AssignableNode& leftHandSide, ExpressionNode& rightHandSide) : leftHandSide(leftHandSide), rightHandSide(rightHandSide) {}
 
-    IdentifierNode& leftHandSide;
+    AssignableNode& leftHandSide;
     ExpressionNode& rightHandSide;
 
     virtual llvm::Value* generateCode(CodeGenerationContext& context);

@@ -303,13 +303,18 @@ Value* UnaryOperatorNode::generateCode(CodeGenerationContext& context) {
     return value;
 }
 
-Value* AssignmentNode::generateCode(CodeGenerationContext& context) {
+Value* AssignableNode::generateCode(CodeGenerationContext& context) {
     auto scope = context.fullScope();
-    if (scope.find(leftHandSide.name) == scope.end()) {
-        return error(context, "Undeclared variable " + leftHandSide.name);
+    if (scope.find(identifier.name) == scope.end()) {
+        return error(context, "Undeclared variable " + identifier.name);
     }
-    Value* variable = scope[leftHandSide.name];
+    Value* variable = scope[identifier.name];
+    return variable;
+}
+
+Value* AssignmentNode::generateCode(CodeGenerationContext& context) {
     Value* value = rightHandSide.generateCode(context);
+    Value* variable = leftHandSide.generateCode(context);
     return new StoreInst(value, variable, false, context.currentBlock());
 }
 
@@ -346,7 +351,8 @@ Value* VariableDeclarationNode::generateCode(CodeGenerationContext& context) {
     AllocaInst *alloc = new AllocaInst(identifierType, 0 /* generic address space */, id.name, context.currentBlock());
     context.localScope()[id.name] = alloc;
     if (assignmentExpression != nullptr) {
-        AssignmentNode assignmentNode(id, *assignmentExpression);
+        AssignableNode* assignable = new AssignableNode(id);
+        AssignmentNode assignmentNode(*assignable, *assignmentExpression);
         assignmentNode.generateCode(context);
     }
     return alloc;
