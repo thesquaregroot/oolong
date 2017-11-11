@@ -303,14 +303,21 @@ Value* UnaryOperatorNode::generateCode(CodeGenerationContext& context) {
     return value;
 }
 
-Value* AssignmentNode::generateCode(CodeGenerationContext& context) {
+Value* AssignableNode::generateCode(CodeGenerationContext& context) {
     auto scope = context.fullScope();
-    if (scope.find(leftHandSide.name) == scope.end()) {
-        return error(context, "Undeclared variable " + leftHandSide.name);
+    if (scope.find(identifier.name) == scope.end()) {
+        return error(context, "Undeclared variable " + identifier.name);
     }
-    Value* variable = scope[leftHandSide.name];
+    Value* variable = scope[identifier.name];
+    return variable;
+}
+
+Value* AssignmentNode::generateCode(CodeGenerationContext& context) {
     Value* value = rightHandSide.generateCode(context);
-    return new StoreInst(value, variable, false, context.currentBlock());
+    Value* variable = leftHandSide.generateCode(context);
+    new StoreInst(value, variable, false, context.currentBlock());
+    // return stored value
+    return value;
 }
 
 Value* BlockNode::generateCode(CodeGenerationContext& context) {
@@ -346,7 +353,8 @@ Value* VariableDeclarationNode::generateCode(CodeGenerationContext& context) {
     AllocaInst *alloc = new AllocaInst(identifierType, 0 /* generic address space */, id.name, context.currentBlock());
     context.localScope()[id.name] = alloc;
     if (assignmentExpression != nullptr) {
-        AssignmentNode assignmentNode(id, *assignmentExpression);
+        AssignableNode* assignable = new AssignableNode(id);
+        AssignmentNode assignmentNode(*assignable, *assignmentExpression);
         assignmentNode.generateCode(context);
     }
     return alloc;
@@ -475,6 +483,91 @@ Value* IfStatementNode::generateCode(CodeGenerationContext& context) {
         context.replaceCurrentBlock(mergeBlock);
 
         return phiNode;
+    }
+}
+
+Value* WhileLoopNode::generateCode(CodeGenerationContext& context) {
+    LLVMContext& llvmContext = context.getLLVMContext();
+    Function* currentFunction = context.currentBlock()->getParent();
+
+    BasicBlock* startBlock = BasicBlock::Create(llvmContext, "loopStart", currentFunction);
+    BasicBlock* bodyBlock = BasicBlock::Create(llvmContext, "loopBody", currentFunction);
+    BasicBlock* exitBlock = BasicBlock::Create(llvmContext, "loopExit");
+
+    // jump to loop start
+    BranchInst::Create(startBlock, context.currentBlock());
+
+    context.pushBlock(startBlock);
+    Value* expressionValue = condition->generateCode(context);
+    Type* booleanType = getBooleanType(llvmContext);
+    Value* conditionValue = convertType(booleanType, expressionValue, context);
+    if (conditionValue == nullptr) {
+        return error(context, "Conditional expression must be of type Boolean.");
+    }
+    // exit if condition is false
+    BranchInst::Create(bodyBlock, exitBlock, conditionValue, context.currentBlock());
+    context.popBlock();
+
+    context.pushBlock(bodyBlock);
+    block.generateCode(context);
+    // jump back to beginning
+    bool blockReturns = context.currentBlockReturns();
+    if (!blockReturns) {
+        BranchInst::Create(startBlock, context.currentBlock());
+    }
+    context.popBlock();
+
+    // manually pushing back exitBlock to keep things in order
+    currentFunction->getBasicBlockList().push_back(exitBlock);
+    // make exitBlock the new current block
+    context.replaceCurrentBlock(exitBlock);
+
+    return nullptr;
+}
+
+Value* IncrementExpressionNode::generateCode(CodeGenerationContext& context) {
+    ReferenceNode* variableReference = new ReferenceNode(assignable);
+
+    Value* originalValue = nullptr;
+    if (postfix) {
+        // need to return original value
+        originalValue = variableReference->generateCode(context);
+    }
+    IntegerNode* one = new IntegerNode(1);
+    BinaryOperatorNode* add = new BinaryOperatorNode(*variableReference, TOKEN_PLUS, *one);
+    AssignmentNode store(assignable, *add);
+
+    Value* incrementedValue = store.generateCode(context);
+    if (postfix) {
+        // return original value
+        return originalValue;
+    }
+    else {
+        // prefix, return incremented value
+        return incrementedValue;
+    }
+}
+
+Value* DecrementExpressionNode::generateCode(CodeGenerationContext& context) {
+    ReferenceNode* variableReference = new ReferenceNode(assignable);
+
+    Value* originalValue = nullptr;
+    if (postfix) {
+        // need to return original value
+        originalValue = variableReference->generateCode(context);
+    }
+    IntegerNode* one = new IntegerNode(1);
+    BinaryOperatorNode* add = new BinaryOperatorNode(*variableReference, TOKEN_MINUS, *one);
+    AssignmentNode store(assignable, *add);
+
+    Value* incrementedValue = store.generateCode(context);
+    if (postfix) {
+        // return original value
+        return originalValue;
+    }
+    else {
+        // prefix, return incremented value
+        return incrementedValue;
     }
 }
 

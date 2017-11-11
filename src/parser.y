@@ -47,6 +47,7 @@
     ExpressionNode *expression;
     IfStatementNode *ifStatement;
     StatementNode *statement;
+    AssignableNode *assignable;
     IdentifierNode *identifier;
     IdentifierList *identifierList;
     VariableDeclarationNode *variableDeclaration;
@@ -64,14 +65,13 @@
 %token <string> TOKEN_INTEGER TOKEN_DOUBLE TOKEN_STRING TOKEN_BOOLEAN
 %token <string> TOKEN_INTEGER_LITERAL TOKEN_DOUBLE_LITERAL TOKEN_STRING_LITERAL TOKEN_BOOLEAN_LITERAL
 %token <token> TOKEN_FUNCTION TOKEN_IMPORT TOKEN_RETURN TOKEN_AND TOKEN_OR
-%token <token> TOKEN_EQUAL_TO TOKEN_NOT_EQUAL_TO TOKEN_LESS_THAN
-%token <token> TOKEN_LESS_THAN_OR_EQUAL_TO TOKEN_GREATER_THAN
-%token <token> TOKEN_GREATER_THAN_OR_EQUAL_TO TOKEN_ASSIGNMENT
-%token <token> TOKEN_LEFT_PARENTHESIS TOKEN_RIGHT_PARENTHESIS
-%token <token> TOKEN_LEFT_BRACE TOKEN_RIGHT_BRACE TOKEN_COMMA
-%token <token> TOKEN_PERIOD TOKEN_PLUS TOKEN_MINUS TOKEN_MULTIPLY
-%token <token> TOKEN_DIVIDE TOKEN_PERCENT TOKEN_SEMICOLON TOKEN_COLON
-%token <token> TOKEN_IF TOKEN_ELSE TOKEN_NOT
+%token <token> TOKEN_EQUAL_TO TOKEN_NOT_EQUAL_TO TOKEN_LESS_THAN TOKEN_LESS_THAN_OR_EQUAL_TO TOKEN_GREATER_THAN TOKEN_GREATER_THAN_OR_EQUAL_TO
+%token <token> TOKEN_ASSIGNMENT TOKEN_SEMICOLON TOKEN_COLON TOKEN_COMMA TOKEN_PERIOD
+%token <token> TOKEN_LEFT_PARENTHESIS TOKEN_RIGHT_PARENTHESIS TOKEN_LEFT_BRACE TOKEN_RIGHT_BRACE
+%token <token> TOKEN_PLUS TOKEN_MINUS TOKEN_MULTIPLY TOKEN_DIVIDE TOKEN_PERCENT
+%token <token> TOKEN_IF TOKEN_ELSE TOKEN_NOT TOKEN_WHILE
+%token <token> TOKEN_ADD_ASSIGN TOKEN_SUBTRACT_ASSIGN TOKEN_MULTIPLY_ASSIGN TOKEN_DIVIDE_ASSIGN TOKEN_MODULO_ASSIGN
+%token <token> TOKEN_INCREMENT TOKEN_DECREMENT
 
 /* Define the type of node our nonterminal symbols represent.
    The types refer to the %union declaration above. Ex: when
@@ -81,8 +81,9 @@
 %type <block> block
 %type <statementList> program statement_list
 %type <expression> expression literal_value
-%type <statement> statement function_declaration
 %type <ifStatement> else_list
+%type <statement> statement function_declaration assignment_statement
+%type <assignable> assignable
 %type <identifier> identifier type
 %type <identifierList> reference
 %type <variableDeclaration> variable_declaration
@@ -126,9 +127,6 @@ statement : TOKEN_IMPORT reference TOKEN_SEMICOLON
                     $$ = new ImportStatementNode(*$2);
                 }
           | function_declaration
-                {
-                    $$ = $1;
-                }
           | variable_declaration TOKEN_SEMICOLON
                 {
                     $$ = $1;
@@ -138,10 +136,7 @@ statement : TOKEN_IMPORT reference TOKEN_SEMICOLON
                     $1->assignmentExpression = $3;
                     $$ = $1;
                 }
-          | identifier TOKEN_ASSIGNMENT expression TOKEN_SEMICOLON
-                {
-                    $$ = new AssignmentNode(*$1, *$3);
-                }
+          | assignment_statement
           | expression TOKEN_SEMICOLON
                 {
                     $$ = new ExpressionStatementNode(*$1);
@@ -161,6 +156,10 @@ statement : TOKEN_IMPORT reference TOKEN_SEMICOLON
           | TOKEN_IF TOKEN_LEFT_PARENTHESIS expression TOKEN_RIGHT_PARENTHESIS block else_list
                 {
                     $$ = new IfStatementNode($3, *$5, $6);
+                }
+          | TOKEN_WHILE TOKEN_LEFT_PARENTHESIS expression TOKEN_RIGHT_PARENTHESIS block
+                {
+                    $$ = new WhileLoopNode($3, *$5);
                 }
           ;
 
@@ -206,6 +205,48 @@ else_list : TOKEN_ELSE block
 else_if : TOKEN_ELSE
         | TOKEN_ELSE TOKEN_IF
         ;
+
+assignment_statement : assignable TOKEN_ASSIGNMENT expression TOKEN_SEMICOLON
+                        {
+                            $$ = new AssignmentNode(*$1, *$3);
+                        }
+                     | assignable TOKEN_ADD_ASSIGN expression TOKEN_SEMICOLON
+                        {
+                            auto variableReference = new ReferenceNode(*$1);
+                            auto calculation = new BinaryOperatorNode(*variableReference, (int)TOKEN_PLUS, *$3);
+                            $$ = new AssignmentNode(*$1, *calculation);
+                        }
+                     | assignable TOKEN_SUBTRACT_ASSIGN expression TOKEN_SEMICOLON
+                        {
+                            auto variableReference = new ReferenceNode(*$1);
+                            auto calculation = new BinaryOperatorNode(*variableReference, (int)TOKEN_MINUS, *$3);
+                            $$ = new AssignmentNode(*$1, *calculation);
+                        }
+                     | assignable TOKEN_MULTIPLY_ASSIGN expression TOKEN_SEMICOLON
+                        {
+                            auto variableReference = new ReferenceNode(*$1);
+                            auto calculation = new BinaryOperatorNode(*variableReference, (int)TOKEN_MULTIPLY, *$3);
+                            $$ = new AssignmentNode(*$1, *calculation);
+                        }
+                     | assignable TOKEN_DIVIDE_ASSIGN expression TOKEN_SEMICOLON
+                        {
+                            auto variableReference = new ReferenceNode(*$1);
+                            auto calculation = new BinaryOperatorNode(*variableReference, (int)TOKEN_DIVIDE, *$3);
+                            $$ = new AssignmentNode(*$1, *calculation);
+                        }
+                     | assignable TOKEN_MODULO_ASSIGN expression TOKEN_SEMICOLON
+                        {
+                            auto variableReference = new ReferenceNode(*$1);
+                            auto calculation = new BinaryOperatorNode(*variableReference, (int)TOKEN_PERCENT, *$3);
+                            $$ = new AssignmentNode(*$1, *calculation);
+                        }
+                     ;
+
+assignable : identifier
+                {
+                    $$ = new AssignableNode(*$1);
+                }
+           ;
 
 variable_declaration : identifier TOKEN_COLON type
                         {
@@ -334,6 +375,22 @@ expression : reference TOKEN_LEFT_PARENTHESIS TOKEN_RIGHT_PARENTHESIS
            | TOKEN_NOT expression
                 {
                     $$ = new UnaryOperatorNode($1, *$2);
+                }
+           | assignable TOKEN_INCREMENT
+                {
+                    $$ = new IncrementExpressionNode(*$1, true);
+                }
+           | TOKEN_INCREMENT assignable
+                {
+                    $$ = new IncrementExpressionNode(*$2, false);
+                }
+           | assignable TOKEN_DECREMENT
+                {
+                    $$ = new DecrementExpressionNode(*$1, true);
+                }
+           | TOKEN_DECREMENT assignable
+                {
+                    $$ = new DecrementExpressionNode(*$2, false);
                 }
            ;
 
