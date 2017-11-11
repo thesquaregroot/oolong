@@ -38,13 +38,14 @@
 "&&"                                    TRACK_TOKEN_LOCATION; return TOKEN(TOKEN_AND);
 "or"                                    TRACK_TOKEN_LOCATION; return TOKEN(TOKEN_OR);
 "||"                                    TRACK_TOKEN_LOCATION; return TOKEN(TOKEN_OR);
+"not"                                   TRACK_TOKEN_LOCATION; return TOKEN(TOKEN_NOT);
+"!"                                     TRACK_TOKEN_LOCATION; return TOKEN(TOKEN_NOT);
 "true"                                  TRACK_TOKEN_LOCATION; SAVE_TOKEN; return TOKEN_BOOLEAN_LITERAL;
 "false"                                 TRACK_TOKEN_LOCATION; SAVE_TOKEN; return TOKEN_BOOLEAN_LITERAL;
 [a-zA-Z_][a-zA-Z0-9_]*                  TRACK_TOKEN_LOCATION; SAVE_TOKEN; return TOKEN_IDENTIFIER;
 [0-9]+\.[0-9]*                          TRACK_TOKEN_LOCATION; SAVE_TOKEN; return TOKEN_DOUBLE_LITERAL;
 [0-9]+                                  TRACK_TOKEN_LOCATION; SAVE_TOKEN; return TOKEN_INTEGER_LITERAL;
 \"(\\.|[^"\\])*\"                       TRACK_TOKEN_LOCATION; SAVE_TOKEN; return TOKEN_STRING_LITERAL;
-"!"                                     TRACK_TOKEN_LOCATION; return TOKEN(TOKEN_NOT);
 "="                                     TRACK_TOKEN_LOCATION; return TOKEN(TOKEN_ASSIGNMENT);
 "=="                                    TRACK_TOKEN_LOCATION; return TOKEN(TOKEN_EQUAL_TO);
 "!="                                    TRACK_TOKEN_LOCATION; return TOKEN(TOKEN_NOT_EQUAL_TO);
