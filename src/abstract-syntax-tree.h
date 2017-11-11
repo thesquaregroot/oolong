@@ -221,5 +221,25 @@ public:
     virtual llvm::Value* generateCode(CodeGenerationContext& context);
 };
 
+class IncrementExpressionNode : public ExpressionNode {
+public:
+    IncrementExpressionNode(AssignableNode& assignable, bool postfix) : assignable(assignable), postfix(postfix) {}
+
+    AssignableNode& assignable;
+    bool postfix;
+
+    virtual llvm::Value* generateCode(CodeGenerationContext& context);
+};
+
+class DecrementExpressionNode : public ExpressionNode {
+public:
+    DecrementExpressionNode(AssignableNode& assignable, bool postfix) : assignable(assignable), postfix(postfix) {}
+
+    AssignableNode& assignable;
+    bool postfix;
+
+    virtual llvm::Value* generateCode(CodeGenerationContext& context);
+};
+
 #endif
 

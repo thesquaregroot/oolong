@@ -376,6 +376,22 @@ expression : reference TOKEN_LEFT_PARENTHESIS TOKEN_RIGHT_PARENTHESIS
                 {
                     $$ = new UnaryOperatorNode($1, *$2);
                 }
+           | assignable TOKEN_INCREMENT
+                {
+                    $$ = new IncrementExpressionNode(*$1, true);
+                }
+           | TOKEN_INCREMENT assignable
+                {
+                    $$ = new IncrementExpressionNode(*$2, false);
+                }
+           | assignable TOKEN_DECREMENT
+                {
+                    $$ = new DecrementExpressionNode(*$1, true);
+                }
+           | TOKEN_DECREMENT assignable
+                {
+                    $$ = new DecrementExpressionNode(*$2, false);
+                }
            ;
 
 function_call_argument_list : expression

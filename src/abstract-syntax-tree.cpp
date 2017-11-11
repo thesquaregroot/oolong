@@ -315,7 +315,9 @@ Value* AssignableNode::generateCode(CodeGenerationContext& context) {
 Value* AssignmentNode::generateCode(CodeGenerationContext& context) {
     Value* value = rightHandSide.generateCode(context);
     Value* variable = leftHandSide.generateCode(context);
-    return new StoreInst(value, variable, false, context.currentBlock());
+    new StoreInst(value, variable, false, context.currentBlock());
+    // return stored value
+    return value;
 }
 
 Value* BlockNode::generateCode(CodeGenerationContext& context) {
@@ -521,5 +523,51 @@ Value* WhileLoopNode::generateCode(CodeGenerationContext& context) {
     context.replaceCurrentBlock(exitBlock);
 
     return nullptr;
+}
+
+Value* IncrementExpressionNode::generateCode(CodeGenerationContext& context) {
+    ReferenceNode* variableReference = new ReferenceNode(assignable);
+
+    Value* originalValue = nullptr;
+    if (postfix) {
+        // need to return original value
+        originalValue = variableReference->generateCode(context);
+    }
+    IntegerNode* one = new IntegerNode(1);
+    BinaryOperatorNode* add = new BinaryOperatorNode(*variableReference, TOKEN_PLUS, *one);
+    AssignmentNode store(assignable, *add);
+
+    Value* incrementedValue = store.generateCode(context);
+    if (postfix) {
+        // return original value
+        return originalValue;
+    }
+    else {
+        // prefix, return incremented value
+        return incrementedValue;
+    }
+}
+
+Value* DecrementExpressionNode::generateCode(CodeGenerationContext& context) {
+    ReferenceNode* variableReference = new ReferenceNode(assignable);
+
+    Value* originalValue = nullptr;
+    if (postfix) {
+        // need to return original value
+        originalValue = variableReference->generateCode(context);
+    }
+    IntegerNode* one = new IntegerNode(1);
+    BinaryOperatorNode* add = new BinaryOperatorNode(*variableReference, TOKEN_MINUS, *one);
+    AssignmentNode store(assignable, *add);
+
+    Value* incrementedValue = store.generateCode(context);
+    if (postfix) {
+        // return original value
+        return originalValue;
+    }
+    else {
+        // prefix, return incremented value
+        return incrementedValue;
+    }
 }
 
