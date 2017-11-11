@@ -193,15 +193,19 @@ else_list : TOKEN_ELSE block
                 {
                     $$ = new IfStatementNode(nullptr, *$2);
                 }
-          | TOKEN_ELSE TOKEN_LEFT_PARENTHESIS expression TOKEN_RIGHT_PARENTHESIS block
+          | else_if TOKEN_LEFT_PARENTHESIS expression TOKEN_RIGHT_PARENTHESIS block
                 {
                     $$ = new IfStatementNode($3, *$5);
                 }
-          | TOKEN_ELSE TOKEN_LEFT_PARENTHESIS expression TOKEN_RIGHT_PARENTHESIS block else_list
+          | else_if TOKEN_LEFT_PARENTHESIS expression TOKEN_RIGHT_PARENTHESIS block else_list
                 {
                     $$ = new IfStatementNode($3, *$5, $6);
                 }
           ;
+
+else_if : TOKEN_ELSE
+        | TOKEN_ELSE TOKEN_IF
+        ;
 
 variable_declaration : identifier TOKEN_COLON type
                         {
