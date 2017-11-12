@@ -13,6 +13,7 @@
 #include <llvm/IR/CallingConv.h>
 #include <llvm/IR/IRPrintingPasses.h>
 #include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/Verifier.h>
 #include <llvm/Bitcode/BitcodeReader.h>
 #include <llvm/Bitcode/BitcodeWriter.h>
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
@@ -43,6 +44,9 @@ void CodeGenerationContext::setOutputName(const string& value) {
 // Compile the AST into a module
 int CodeGenerationContext::generateCode(BlockNode& root) {
 	root.generateCode(*this);
+
+    // verify module
+    verifyModule(*module);
 
     // save IR
     std::string intermediateRepresentation;

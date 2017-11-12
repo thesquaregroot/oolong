@@ -7,9 +7,9 @@ function main() : Integer {
         j : Integer = 0;
         while (j < 5) {
             a = 10 * i - j;
-            j = j + 1;
+            j++;
         }
-        i = i + 1;
+        i++;
     }
     return a;
 }
