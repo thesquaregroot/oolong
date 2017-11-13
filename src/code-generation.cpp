@@ -149,7 +149,11 @@ BasicBlock* CodeGenerationContext::currentBlock() {
 }
 
 Function* CodeGenerationContext::currentFunction() {
-    return blocks.back()->block->getParent();
+    if (blocks.size() > 0) {
+        return blocks.back()->block->getParent();
+    } else {
+        return nullptr;
+    }
 }
 
 LLVMContext& CodeGenerationContext::getLLVMContext() {

@@ -121,16 +121,23 @@ bool Importer::importPackage(const string& package, CodeGenerationContext* conte
 }
 
 Function* Importer::findFunction(const OolongFunction& function) const{
+    return this->findFunction(function, false /* inexact match */);
+}
+
+Function* Importer::findFunction(const OolongFunction& function, bool exactMatch) const{
     auto it = importedFunctions.find(function);
     if (it != importedFunctions.end()) {
         return it->second;
     }
     else {
-        // no exact match, try to convert arguments to find a match
-        for (auto pair : importedFunctions) {
-            OolongFunction candidate = pair.first;
-            if (function.matches(candidate, true /* allow casting */)) {
-                return pair.second;
+        // no exact match
+        if (!exactMatch) {
+            // try to convert arguments to find a match
+            for (auto pair : importedFunctions) {
+                OolongFunction candidate = pair.first;
+                if (function.matches(candidate, true /* allow casting */)) {
+                    return pair.second;
+                }
             }
         }
         // unable to find match
@@ -154,16 +161,40 @@ static void createIoFunctions(Importer* importer, CodeGenerationContext* context
     function = OolongFunction("io.print", arguments, &llvmContext);
     importer->declareExternalFunction(voidType, function, "___io___print_Integer", context);
 
-    //// print Double
+    // print Double
     arguments.clear();
     arguments.push_back(Type::getDoubleTy(llvmContext));
     function = OolongFunction("io.print", arguments, &llvmContext);
     importer->declareExternalFunction(voidType, function, "___io___print_Double", context);
 
-    //// print Boolean
+    // print Boolean
     arguments.clear();
     arguments.push_back(Type::getInt1Ty(llvmContext));
     function = OolongFunction("io.print", arguments, &llvmContext);
     importer->declareExternalFunction(voidType, function, "___io___print_Boolean", context);
+
+    // printLine String
+    arguments.clear();
+    arguments.push_back(Type::getInt8PtrTy(llvmContext));
+    function = OolongFunction("io.printLine", arguments, &llvmContext);
+    importer->declareExternalFunction(voidType, function, "___io___printLine_String", context);
+
+    // printLine Integer
+    arguments.clear();
+    arguments.push_back(Type::getInt64Ty(llvmContext));
+    function = OolongFunction("io.printLine", arguments, &llvmContext);
+    importer->declareExternalFunction(voidType, function, "___io___printLine_Integer", context);
+
+    // printLine Double
+    arguments.clear();
+    arguments.push_back(Type::getDoubleTy(llvmContext));
+    function = OolongFunction("io.printLine", arguments, &llvmContext);
+    importer->declareExternalFunction(voidType, function, "___io___printLine_Double", context);
+
+    // printLine Boolean
+    arguments.clear();
+    arguments.push_back(Type::getInt1Ty(llvmContext));
+    function = OolongFunction("io.printLine", arguments, &llvmContext);
+    importer->declareExternalFunction(voidType, function, "___io___printLine_Boolean", context);
 }
 

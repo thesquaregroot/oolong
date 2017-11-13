@@ -264,6 +264,17 @@ Value* FunctionDeclarationNode::generateCode(CodeGenerationContext& context) {
     for (VariableDeclarationNode* argument : arguments) {
         argumentTypes.push_back(TypeConverter::typeOf(argument->type.name, llvmContext));
     }
+
+    OolongFunction oolongFunction(id.name, argumentTypes, &llvmContext);
+    if (context.getImporter().findFunction(oolongFunction, true) != nullptr) {
+        // exact match
+        return error(context, "Redefinition of function " + to_string(oolongFunction));
+    }
+    if (context.getImporter().findFunction(oolongFunction, false) != nullptr) {
+        // close match
+        warning(context, "Potential conflicting definition of function " + to_string(oolongFunction));
+    }
+
     Type* returnType = TypeConverter::typeOf(type.name, llvmContext);
     FunctionType *ftype = FunctionType::get(returnType, makeArrayRef(argumentTypes), false);
     Function *function = nullptr;
@@ -277,7 +288,6 @@ Value* FunctionDeclarationNode::generateCode(CodeGenerationContext& context) {
         function = Function::Create(ftype, GlobalValue::InternalLinkage, id.name.c_str(), context.getModule());
     }
 
-    OolongFunction oolongFunction(id.name, argumentTypes, &llvmContext);
     context.getImporter().declareFunction(oolongFunction, function);
 
     BasicBlock *bblock = BasicBlock::Create(llvmContext, "entry", function, 0);
