@@ -27,18 +27,29 @@ size_t OolongFunction::getArgumentCount() const {
     return arguments.size();
 }
 
-bool OolongFunction::operator==(const OolongFunction& other) const {
+bool OolongFunction::matches(const OolongFunction& other, bool castArguments) const {
     //cout << "Comparing " << to_string(*this) << " to " << to_string(other) << endl;
     if (name != other.name || arguments.size() != other.arguments.size()) {
         return false;
     }
     for (size_t i=0; i<arguments.size(); i++) {
         Type* targetType = arguments[i];
-        if (!TypeConverter::canConvertType(other.arguments[i], targetType, llvmContext)) {
-            return false;
+        if (castArguments) {
+            if (!TypeConverter::canConvertType(targetType, other.arguments[i], llvmContext)) {
+                return false;
+            }
+        }
+        else {
+            if (targetType != other.arguments[i]) {
+                return false;
+            }
         }
     }
     return true;
+}
+
+bool OolongFunction::operator==(const OolongFunction& other) const {
+    return this->matches(other, false /* find exact match */);
 }
 
 bool OolongFunction::operator!=(const OolongFunction& other) const {
@@ -55,7 +66,7 @@ bool OolongFunction::operator<(const OolongFunction& other) const {
     }
     for (size_t i=0; i<arguments.size(); i++) {
         Type* targetType = arguments[i];
-        if (!TypeConverter::canConvertType(other.arguments[i], targetType, llvmContext)) {
+        if (targetType != other.arguments[i]) {
             // pointer comparison (relies on consistent type references)
             return arguments[i] < other.arguments[i];
         }
@@ -111,11 +122,19 @@ bool Importer::importPackage(const string& package, CodeGenerationContext* conte
 
 Function* Importer::findFunction(const OolongFunction& function) const{
     auto it = importedFunctions.find(function);
-    if (it == importedFunctions.end()) {
-        return nullptr;
+    if (it != importedFunctions.end()) {
+        return it->second;
     }
     else {
-        return it->second;
+        // no exact match, try to convert arguments to find a match
+        for (auto pair : importedFunctions) {
+            OolongFunction candidate = pair.first;
+            if (function.matches(candidate, true /* allow casting */)) {
+                return pair.second;
+            }
+        }
+        // unable to find match
+        return nullptr;
     }
 }
 
@@ -130,18 +149,21 @@ static void createIoFunctions(Importer* importer, CodeGenerationContext* context
     importer->declareExternalFunction(voidType, function, "___io___print_String", context);
 
     // print Integer
-    //arguments.clear();
-    //arguments.push_back(Type::getInt64Ty(llvmContext));
-    //declareExternalFunction("io.print", voidType, "io___print_Integer", arguments, context);
+    arguments.clear();
+    arguments.push_back(Type::getInt64Ty(llvmContext));
+    function = OolongFunction("io.print", arguments, &llvmContext);
+    importer->declareExternalFunction(voidType, function, "___io___print_Integer", context);
 
     //// print Double
-    //arguments.clear();
-    //arguments.push_back(Type::getDoubleTy(llvmContext));
-    //declareExternalFunction(voidType, "io___print_Double", arguments, context);
+    arguments.clear();
+    arguments.push_back(Type::getDoubleTy(llvmContext));
+    function = OolongFunction("io.print", arguments, &llvmContext);
+    importer->declareExternalFunction(voidType, function, "___io___print_Double", context);
 
     //// print Boolean
-    //arguments.clear();
-    //arguments.push_back(Type::getInt1Ty(llvmContext));
-    //declareExternalFunction(voidType, "io___print_Boolean", arguments, context);
+    arguments.clear();
+    arguments.push_back(Type::getInt1Ty(llvmContext));
+    function = OolongFunction("io.print", arguments, &llvmContext);
+    importer->declareExternalFunction(voidType, function, "___io___print_Boolean", context);
 }
 

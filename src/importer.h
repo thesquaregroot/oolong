@@ -23,6 +23,7 @@ public:
     std::vector<llvm::Type*> getArguments() const;
     size_t getArgumentCount() const;
 
+    bool matches(const OolongFunction& function, bool castArguments) const;
     bool operator==(const OolongFunction& function) const;
     bool operator!=(const OolongFunction& function) const;
     bool operator<(const OolongFunction& function) const;
