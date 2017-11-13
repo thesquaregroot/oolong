@@ -3,5 +3,6 @@ import io;
 
 function main() : Integer {
     io.print("Hello, world!\n");
+    return 0;
 }
 

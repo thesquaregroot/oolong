@@ -45,9 +45,6 @@ void CodeGenerationContext::setOutputName(const string& value) {
 int CodeGenerationContext::generateCode(BlockNode& root) {
 	root.generateCode(*this);
 
-    // verify module
-    verifyModule(*module);
-
     // save IR
     std::string intermediateRepresentation;
     raw_string_ostream output(intermediateRepresentation);
@@ -63,6 +60,12 @@ int CodeGenerationContext::generateCode(BlockNode& root) {
             outputFile.flush();
             outputFile.close();
         }
+    }
+
+    // verify module
+    if (/*int errorCode = */verifyModule(*module, &errs())) {
+        //errs() << "Invalid module, bailing out.\n";
+        //return errorCode;
     }
 
     // Initialize the target registry etc.
@@ -200,5 +203,13 @@ bool CodeGenerationContext::currentBlockReturns() {
         return false;
     }
     return blocks.back()->hasReturnValue;
+}
+
+TypeConverter& CodeGenerationContext::getTypeConverter() {
+    return this->typeConverter;
+}
+
+Importer& CodeGenerationContext::getImporter() {
+    return this->importer;
 }
 
