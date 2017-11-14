@@ -33,3 +33,13 @@ void ___io___printLine_Boolean(bool value) {
     printf(value ? "true\n" : "false\n");
 }
 
+char* ___io___readLine() {
+    char* line = NULL;
+    size_t length = 0;
+
+    ssize_t read = getline(&line, &length, stdin);
+    // TODO: handle failed read
+    // TODO: ensure line is freed
+    return line;
+}
+

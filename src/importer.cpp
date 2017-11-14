@@ -147,7 +147,9 @@ Function* Importer::findFunction(const OolongFunction& function, bool exactMatch
 
 static void createIoFunctions(Importer* importer, CodeGenerationContext* context) {
     LLVMContext& llvmContext = context->getLLVMContext();
+
     Type* voidType = Type::getVoidTy(llvmContext);
+    Type* stringType = TypeConverter::getStringType(llvmContext);
 
     // print String
     vector<Type*> arguments;
@@ -196,5 +198,10 @@ static void createIoFunctions(Importer* importer, CodeGenerationContext* context
     arguments.push_back(Type::getInt1Ty(llvmContext));
     function = OolongFunction("io.printLine", arguments, &llvmContext);
     importer->declareExternalFunction(voidType, function, "___io___printLine_Boolean", context);
+
+    // readLine
+    arguments.clear();
+    function = OolongFunction("io.readLine", arguments, &llvmContext);
+    importer->declareExternalFunction(stringType, function, "___io___readLine", context);
 }
 
