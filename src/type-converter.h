@@ -16,6 +16,7 @@ public:
     static llvm::Type* getBooleanType(llvm::LLVMContext& llvmContext);
     static llvm::Type* getIntegerType(llvm::LLVMContext& llvmContext);
     static llvm::Type* getDoubleType(llvm::LLVMContext& llvmContext);
+    static llvm::Type* getStringType(llvm::LLVMContext& llvmContext);
     static llvm::Type* typeOf(const std::string& name, llvm::LLVMContext& llvmContext);
     static std::string getTypeName(llvm::Type* type);
     static bool canConvertType(llvm::Type* targetType, llvm::Type* value, llvm::LLVMContext* context);

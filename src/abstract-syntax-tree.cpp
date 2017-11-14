@@ -50,8 +50,19 @@ Value* DoubleNode::generateCode(CodeGenerationContext& context) {
 }
 
 Value* StringNode::generateCode(CodeGenerationContext& context) {
-    Constant* constant = ConstantDataArray::getString(context.getLLVMContext(), value, true);
-    return constant;
+    // create global constant and return a pointer to it
+    LLVMContext& llvmContext = context.getLLVMContext();
+    auto stringConstant = ConstantDataArray::getString(llvmContext, value, true);
+    Type* type = stringConstant->getType();
+    Constant *zero = Constant::getNullValue(IntegerType::getInt32Ty(llvmContext));
+    vector<llvm::Value*> indices;
+    indices.push_back(zero);
+    indices.push_back(zero);
+    // make global reference to constant
+    GlobalVariable *global = new GlobalVariable(*context.getModule(), type, true, GlobalValue::PrivateLinkage, stringConstant, ".str");
+    // get a pointer to the global constant
+    GetElementPtrInst* pointer = GetElementPtrInst::CreateInBounds(type, global, makeArrayRef(indices), "", context.currentBlock());
+    return pointer;
 }
 
 Value* IdentifierNode::generateCode(CodeGenerationContext& context) {

@@ -28,6 +28,10 @@ Type* TypeConverter::getDoubleType(LLVMContext& llvmContext) {
     return Type::getDoubleTy(llvmContext);
 }
 
+Type* TypeConverter::getStringType(LLVMContext& llvmContext) {
+    return Type::getInt8PtrTy(llvmContext);
+}
+
 /* Returns an LLVM type based on the identifier */
 Type* TypeConverter::typeOf(const string& name, LLVMContext& llvmContext) {
     if (name == "Boolean") {
@@ -38,6 +42,9 @@ Type* TypeConverter::typeOf(const string& name, LLVMContext& llvmContext) {
     }
     else if (name == "Double") {
         return getDoubleType(llvmContext);
+    }
+    else if (name == "String") {
+        return getStringType(llvmContext);
     }
     else if (name == "Void") {
         return Type::getVoidTy(llvmContext);
@@ -85,19 +92,10 @@ bool TypeConverter::canConvertType(Type* sourceType, Type* targetType, LLVMConte
     Type* integerType = getIntegerType(*llvmContext);
     Type* doubleType = getDoubleType(*llvmContext);
 
-
-    // double target
+    // Double target
     if (targetType == doubleType) {
         // convert Integer to Double
         if (sourceType == integerType) {
-            return true;
-        }
-    }
-
-    // char* target
-    if (targetType->getTypeID() == Type::TypeID::PointerTyID && targetType->getPointerElementType()->getTypeID() == Type::TypeID::IntegerTyID) {
-        // convert String to char*
-        if (sourceType->getTypeID() == Type::TypeID::ArrayTyID && sourceType->getArrayElementType()->getTypeID() == Type::TypeID::IntegerTyID) {
             return true;
         }
     }
@@ -108,13 +106,13 @@ bool TypeConverter::canConvertType(Type* sourceType, Type* targetType, LLVMConte
 Value* TypeConverter::convertType(Value* value, Type* targetType, CodeGenerationContext* context) {
     //cout << "Attempting conversion from " << getTypeName(sourceType) << " to " << getTypeName(targetType) << endl;
 
+    LLVMContext& llvmContext = context->getLLVMContext();
+
     Type* valueType = value->getType();
     if (targetType == valueType) {
         // same type pass through
         return value;
     }
-
-    LLVMContext& llvmContext = context->getLLVMContext();
 
     Type* integerType = getIntegerType(llvmContext);
     Type* doubleType = getDoubleType(llvmContext);
@@ -125,24 +123,6 @@ Value* TypeConverter::convertType(Value* value, Type* targetType, CodeGeneration
         if (valueType == integerType) {
             CastInst* cast = new SIToFPInst(value, doubleType, "", context->currentBlock());
             return cast;
-        }
-    }
-
-    // char* target
-    if (targetType->getTypeID() == Type::TypeID::PointerTyID && targetType->getPointerElementType()->getTypeID() == Type::TypeID::IntegerTyID) {
-        // convert String to char*
-        if (valueType->getTypeID() == Type::TypeID::ArrayTyID && valueType->getArrayElementType()->getTypeID() == Type::TypeID::IntegerTyID) {
-            ConstantDataSequential* valueConstant = (ConstantDataSequential*) value;
-
-            Constant *zero = Constant::getNullValue(IntegerType::getInt32Ty(llvmContext));
-            vector<llvm::Value*> indices;
-            indices.push_back(zero);
-            indices.push_back(zero);
-            // make global reference to constant
-            GlobalVariable *global = new GlobalVariable(*context->getModule(), valueType, true, GlobalValue::PrivateLinkage, valueConstant, ".str");
-            // get a pointer to the global constant
-            GetElementPtrInst* pointer = GetElementPtrInst::CreateInBounds(valueType, global, makeArrayRef(indices), "", context->currentBlock());
-            return pointer;
         }
     }
 
