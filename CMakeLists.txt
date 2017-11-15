@@ -30,25 +30,23 @@ message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 add_definitions(${LLVM_DEFINITIONS})
 include_directories(${LLVM_INCLUDE_DIRS})
 
+file(GLOB PKG_SRCS ${SRC_DIR}/package/*.c)
+add_library(packages STATIC ${PKG_SRCS})
+set_target_properties(packages PROPERTIES ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib/)
+
 ### Oolong ###
 set(CMAKE_CXX_FLAGS "-std=c++11 -O3 -pipe -fstack-protector-strong -fPIC -fvisibility-inlines-hidden -Werror=date-time -Wall -W -Wno-unused-parameter -Wwrite-strings -Wcast-qual -Wno-missing-field-initializers -pedantic -Wno-long-long -Wno-maybe-uninitialized -Wdelete-non-virtual-dtor -Wno-comment -ffunction-sections -fdata-sections -DNDEBUG -fno-exceptions")
 add_executable(oolong ${SRCS} ${BISON_parser_OUTPUTS} ${FLEX_tokens_OUTPUTS})
+
+### LLVM (add flags) ###
 if(UNIX AND NOT APPLE)
     # will probably need updated later on
     # seems like a conflict between LLVM and ncurses
     # also unsure of how portable this is to other distros
     target_link_libraries(oolong LLVM-5.0)
 endif()
+set(COMPONENT_LIST all)
+llvm_map_components_to_libnames(LLVM_LIBS ${COMPONENT_LIST})
 
-### LLVM (add flags) ###
-llvm_map_components_to_libnames(LLVM_LIBS all)
-target_link_libraries(oolong ${LLVM_LIBS})
-
-### packages ###
-add_custom_target(lib_dir ALL COMMAND mkdir -p ${PROJECT_SOURCE_DIR}/lib)
-add_custom_target(packages ALL DEPENDS lib_dir COMMAND find ${PROJECT_SOURCE_DIR}/src/package -name *.c -execdir gcc -c {} -o ${PROJECT_SOURCE_DIR}/lib/{}.o \\\\;)
-
-### Packages (add to oolong for interpreter) ###
-file(GLOB PACKAGES ${PROJECT_SOURCE_DIR}/lib/*.o)
-target_link_libraries(oolong ${PACKAGES})
+target_link_libraries(oolong $<TARGET_FILE:packages> ${LLVM_LIBS})
 

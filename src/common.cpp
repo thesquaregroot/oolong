@@ -8,6 +8,17 @@ using namespace llvm;
 
 extern const char* currentParseFile;
 
+// general string function, replace all occurrences of a substring with another
+void replaceAll(string& value, const string& substring, const string& replacement) {
+    size_t index = value.find(substring);
+    while (index != string::npos) {
+        // replace \" sequence with just "
+        value.replace(index, substring.length(), replacement);
+        // re-search starting at end of replacement
+        index = value.find("\\\"", index + replacement.length() - 1);
+    }
+}
+
 static string getFunctionContext(CodeGenerationContext& context) {
     string functionContext = "";
     if (context.currentFunction() != nullptr) {

@@ -37,7 +37,7 @@ private:
 
 public:
     void declareFunction(const OolongFunction& function, llvm::Function* functionReference);
-    void declareExternalFunction(llvm::Type* returnType, const OolongFunction& function, const char* externalName, CodeGenerationContext* context);
+    void declareExternalFunction(llvm::Type* returnType, const OolongFunction& function, CodeGenerationContext* context);
     bool importPackage(const std::string& package, CodeGenerationContext* context);
     llvm::Function* findFunction(const OolongFunction& function) const;
     llvm::Function* findFunction(const OolongFunction& function, bool exactMatch) const;

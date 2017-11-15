@@ -70,7 +70,13 @@ string TypeConverter::getTypeName(Type* type) {
                                                 }
                                             } break;
         case Type::TypeID::ArrayTyID:       return "Array<" + getTypeName(type->getArrayElementType()) + ">";
-        case Type::TypeID::PointerTyID:     return "Pointer<" + getTypeName(type->getPointerElementType()) + ">";
+        case Type::TypeID::PointerTyID:     {
+                                                Type* pointerElementType = type->getPointerElementType();
+                                                if (pointerElementType->isIntegerTy(8)) {
+                                                    return "String";
+                                                }
+                                                return "Pointer<" + getTypeName(pointerElementType) + ">";
+                                            }
         case Type::TypeID::StructTyID:      return type->getStructName().str();
         default: {
             // not prepared for this, use stream conversion

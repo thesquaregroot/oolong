@@ -19,8 +19,6 @@
 using namespace std;
 using namespace llvm;
 
-static const string FUNCTION_PACKAGE_SEPARATOR = "___";
-
 /* Return the fully formed reference name (joined with periods) */
 string createReferenceName(const IdentifierList& reference) {
     stringstream referenceStream;

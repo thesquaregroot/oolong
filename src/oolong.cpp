@@ -80,7 +80,7 @@ static void linkFiles(const string& outputFile, vector<string> objectFiles) {
         command << " " << objectFile;
     }
     // add oolong packages
-    command << " lib/*.o";
+    command << " lib/* -lm";
     system(command.str().c_str());
 }
 

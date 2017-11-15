@@ -43,7 +43,8 @@ void CodeGenerationContext::setOutputName(const string& value) {
 
 // Compile the AST into a module
 int CodeGenerationContext::generateCode(BlockNode& root) {
-	root.generateCode(*this);
+    importer.importPackage("", this); // import default package
+    root.generateCode(*this);
 
     // save IR
     std::string intermediateRepresentation;
