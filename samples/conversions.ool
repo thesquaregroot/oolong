@@ -1,0 +1,23 @@
+
+import io;
+
+function main() : Integer {
+    stringBoolean : String = "true";
+    stringInteger : String = "4";
+    stringDouble : String = "4.7";
+
+    if (toBoolean(stringBoolean) != true) {
+        io.printLine("stringBoolean error!");
+        io.printLine(toBoolean(stringBoolean));
+    }
+    if (toInteger(stringInteger) != 4) {
+        io.printLine("stringInteger error!");
+        io.printLine(toInteger(stringInteger));
+    }
+    if (toDouble(stringDouble) != 4.7) {
+        io.printLine("stringDouble error!");
+        io.printLine(toDouble(stringDouble));
+    }
+
+    return 0;
+}

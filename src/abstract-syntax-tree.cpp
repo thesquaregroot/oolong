@@ -1,5 +1,6 @@
 #include "abstract-syntax-tree.h"
 #include "code-generation.h"
+#include "common.h"
 #include "parser.hpp"
 #include "importer.h"
 #include <iostream>
@@ -18,129 +19,16 @@
 using namespace std;
 using namespace llvm;
 
-extern const char* currentParseFile;
-
-static const string FUNCTION_PACKAGE_SEPARATOR = "___";
-
-static Value* warning(CodeGenerationContext& context, const string& warningMessage) {
-    cerr << "warning: In file " << currentParseFile << ", function " << context.currentFunction()->getName().str() << ": " << warningMessage << endl;
-    return nullptr;
-}
-
-static Value* error(CodeGenerationContext& context, const string& errorMessage) {
-    const string fullError =  "In file " + string(currentParseFile) +  ", function " + context.currentFunction()->getName().str() + ": " + errorMessage;
-    context.getLLVMContext().emitError(fullError);
-    return nullptr;
-}
-
-static Type* getBooleanType(LLVMContext& llvmContext) {
-    return Type::getInt1Ty(llvmContext);
-}
-
-static Type* getIntegerType(LLVMContext& llvmContext) {
-    return Type::getInt64Ty(llvmContext);
-}
-
-static Type* getDoubleType(LLVMContext& llvmContext) {
-    return Type::getDoubleTy(llvmContext);
-}
-
 /* Return the fully formed reference name (joined with periods) */
-static string createReferenceName(const IdentifierList& reference) {
+string createReferenceName(const IdentifierList& reference) {
     stringstream referenceStream;
     for (size_t i = 0; i<reference.size(); i++) {
         if (i != 0) {
-            referenceStream << FUNCTION_PACKAGE_SEPARATOR;
+            referenceStream << ".";
         }
         referenceStream << reference[i]->name;
     }
     return referenceStream.str();
-}
-
-/* Returns an LLVM type based on the identifier */
-static Type* typeOf(const IdentifierNode& type, LLVMContext& llvmContext)
-{
-    if (type.name == "Boolean") {
-        return getBooleanType(llvmContext);
-    }
-    else if (type.name == "Integer") {
-        return getIntegerType(llvmContext);
-    }
-    else if (type.name == "Double") {
-        return getDoubleType(llvmContext);
-    }
-    return Type::getVoidTy(llvmContext);
-}
-
-/* Build a string that represents the provided type */
-static string getTypeName(Type* type) {
-    if (type == nullptr) {
-        return "[nullptr]";
-    }
-    switch (type->getTypeID()) {
-        case Type::TypeID::VoidTyID:        return "Void";
-        case Type::TypeID::DoubleTyID:      return "Double";
-        case Type::TypeID::IntegerTyID:     {
-                                                IntegerType* integerType = (IntegerType*) type;
-                                                switch (integerType->getBitWidth()) {
-                                                    case 1: return "Boolean";
-                                                    case 64: return "Integer";
-                                                    default: return "Integer[" + to_string(integerType->getBitWidth()) + "]";
-                                                }
-                                            } break;
-        case Type::TypeID::ArrayTyID:       return "Array<" + getTypeName(type->getArrayElementType()) + ">";
-        case Type::TypeID::PointerTyID:     return "Pointer<" + getTypeName(type->getPointerElementType()) + ">";
-        case Type::TypeID::StructTyID:      return type->getStructName().str();
-        default: {
-            // not prepared for this, use stream conversion
-            string typeString;
-            llvm::raw_string_ostream stream(typeString);
-            type->print(stream);
-            return typeString;
-        }
-    }
-}
-
-static Value* convertType(Type* targetType, Value* value, CodeGenerationContext& context) {
-    Type* valueType = value->getType();
-    if (targetType == valueType) {
-        // same type pass through
-        return value;
-    }
-
-    LLVMContext& llvmContext = context.getLLVMContext();
-
-    Type* integerType = getIntegerType(llvmContext);
-    Type* doubleType = getDoubleType(llvmContext);
-
-    // double target
-    if (targetType == doubleType) {
-        // convert Integer to Double
-        if (valueType == integerType) {
-            CastInst* cast = new SIToFPInst(value, doubleType, "", context.currentBlock());
-            return cast;
-        }
-    }
-
-    // char* target
-    if (targetType->getTypeID() == Type::TypeID::PointerTyID && targetType->getPointerElementType()->getTypeID() == Type::TypeID::IntegerTyID) {
-        // convert String to char*
-        if (valueType->getTypeID() == Type::TypeID::ArrayTyID && valueType->getArrayElementType()->getTypeID() == Type::TypeID::IntegerTyID) {
-            ConstantDataSequential* valueConstant = (ConstantDataSequential*) value;
-
-            Constant *zero = Constant::getNullValue(IntegerType::getInt32Ty(llvmContext));
-            vector<llvm::Value*> indices;
-            indices.push_back(zero);
-            indices.push_back(zero);
-            // make global reference to constant
-            GlobalVariable *global = new GlobalVariable(*context.getModule(), valueType, true, GlobalValue::PrivateLinkage, valueConstant, ".str");
-            // get a pointer to the global constant
-            GetElementPtrInst* pointer = GetElementPtrInst::CreateInBounds(valueType, global, makeArrayRef(indices), "", context.currentBlock());
-            return pointer;
-        }
-    }
-
-    return error(context, "No valid conversion found for " + getTypeName(valueType) + " to " + getTypeName(targetType));
 }
 
 Value* BooleanNode::generateCode(CodeGenerationContext& context) {
@@ -160,8 +48,19 @@ Value* DoubleNode::generateCode(CodeGenerationContext& context) {
 }
 
 Value* StringNode::generateCode(CodeGenerationContext& context) {
-    Constant* constant = ConstantDataArray::getString(context.getLLVMContext(), value, true);
-    return constant;
+    // create global constant and return a pointer to it
+    LLVMContext& llvmContext = context.getLLVMContext();
+    auto stringConstant = ConstantDataArray::getString(llvmContext, value, true);
+    Type* type = stringConstant->getType();
+    Constant *zero = Constant::getNullValue(IntegerType::getInt32Ty(llvmContext));
+    vector<llvm::Value*> indices;
+    indices.push_back(zero);
+    indices.push_back(zero);
+    // make global reference to constant
+    GlobalVariable *global = new GlobalVariable(*context.getModule(), type, true, GlobalValue::PrivateLinkage, stringConstant, ".str");
+    // get a pointer to the global constant
+    GetElementPtrInst* pointer = GetElementPtrInst::CreateInBounds(type, global, makeArrayRef(indices), "", context.currentBlock());
+    return pointer;
 }
 
 Value* IdentifierNode::generateCode(CodeGenerationContext& context) {
@@ -183,27 +82,35 @@ Value* ReferenceNode::generateCode(CodeGenerationContext& context) {
 
 Value* FunctionCallNode::generateCode(CodeGenerationContext& context) {
     const string functionName = createReferenceName(reference);
-    Function *function = context.getModule()->getFunction(functionName);
-    if (function == nullptr) {
-        return error(context, "No such function: " + functionName);
-    }
     vector<Value*> callingArguments;
+    vector<Type*> callingTypes;
     ExpressionList::const_iterator callIt = arguments.begin();
-    auto declaredIt = function->arg_begin();
-    size_t position = 1;
     while (callIt != arguments.end()) {
-        Argument* declaredArgument = declaredIt;
         Value* callingArgument = (*callIt)->generateCode(context);
-        Value* convertedArgument = convertType(declaredArgument->getType(), callingArgument, context);
-        if (convertedArgument == nullptr) {
-            return error(context, "Invalid argument for function " + functionName + " (position " + to_string(position) + ")");
-        }
-        callingArguments.push_back(convertedArgument);
+        callingArguments.push_back(callingArgument);
+        callingTypes.push_back(callingArgument->getType());
         callIt++;
+    }
+    OolongFunction targetFunction(functionName, callingTypes, &context.getLLVMContext());
+    Function *function = context.getImporter().findFunction(targetFunction);
+    if (function == nullptr) {
+        return error(context, "No such function: " + to_string(targetFunction));
+    }
+    vector<Value*> convertedArguments;
+    auto declaredIt = function->arg_begin();
+    size_t position = 0;
+    while (declaredIt != function->arg_end()) {
+        Argument* declaredArgument = declaredIt;
+        Value* callingArgument = callingArguments[position];
+        Value* convertedArgument = context.getTypeConverter().convertType(callingArgument, declaredArgument->getType(), &context);
+        if (convertedArgument == nullptr) {
+            return error(context, "Invalid argument for function " + functionName + " (position " + to_string(position+1) + ")");
+        }
+        convertedArguments.push_back(convertedArgument);
         declaredIt++;
         position++;
     }
-    CallInst *call = CallInst::Create(function, makeArrayRef(callingArguments), "", context.currentBlock());
+    CallInst *call = CallInst::Create(function, makeArrayRef(convertedArguments), "", context.currentBlock());
     return call;
 }
 
@@ -216,21 +123,21 @@ Value* BinaryOperatorNode::generateCode(CodeGenerationContext& context) {
 
     bool isInteger = true;
     LLVMContext& llvmContext = context.getLLVMContext();
-    Type* booleanType = getBooleanType(llvmContext);
-    Type* integerType = getIntegerType(llvmContext);
-    Type* doubleType = getDoubleType(llvmContext);
+    Type* booleanType = TypeConverter::getBooleanType(llvmContext);
+    Type* integerType = TypeConverter::getIntegerType(llvmContext);
+    Type* doubleType = TypeConverter::getDoubleType(llvmContext);
     // change isInteger if either type is a float
     if (!(leftType == booleanType || leftType == integerType || leftType == doubleType)) {
         // leftType is not integer or float
-        return error(context, "Unable to perform binary operation with type " + getTypeName(leftType));
+        return error(context, "Unable to perform binary operation with type " + TypeConverter::getTypeName(leftType));
     }
     if (!(rightType == booleanType || rightType == integerType || rightType == doubleType)) {
         // rightType is not integer or double
-        return error(context, "Unable to perform binary operation with type " + getTypeName(rightType));
+        return error(context, "Unable to perform binary operation with type " + TypeConverter::getTypeName(rightType));
     }
     if (leftType == doubleType || rightType == doubleType) {
-        left = convertType(doubleType, left, context);
-        right = convertType(doubleType, right, context);
+        left = context.getTypeConverter().convertType(left, doubleType, &context);
+        right = context.getTypeConverter().convertType(right, doubleType, &context);
         isInteger = false;
     }
 
@@ -270,12 +177,12 @@ Value* UnaryOperatorNode::generateCode(CodeGenerationContext& context) {
     Type* type = value->getType();
 
     LLVMContext& llvmContext = context.getLLVMContext();
-    Type* booleanType = getBooleanType(llvmContext);
-    Type* integerType = getIntegerType(llvmContext);
-    Type* doubleType = getDoubleType(llvmContext);
+    Type* booleanType = TypeConverter::getBooleanType(llvmContext);
+    Type* integerType = TypeConverter::getIntegerType(llvmContext);
+    Type* doubleType = TypeConverter::getDoubleType(llvmContext);
     if (!(type == booleanType || type == integerType || type == doubleType)) {
         // expression is not integer or double
-        return error(context, "Unable to perform unary operation with type " + getTypeName(type));
+        return error(context, "Unable to perform unary operation with type " + TypeConverter::getTypeName(type));
     }
     bool isInteger = (type != doubleType);
 
@@ -349,7 +256,7 @@ Value* VariableDeclarationNode::generateCode(CodeGenerationContext& context) {
         return error(context, "Redeclaration of variable " + id.name);
     }
     LLVMContext& llvmContext = context.getLLVMContext();
-    Type* identifierType = typeOf(type, llvmContext);
+    Type* identifierType = TypeConverter::typeOf(type.name, llvmContext);
     AllocaInst *alloc = new AllocaInst(identifierType, 0 /* generic address space */, id.name, context.currentBlock());
     context.localScope()[id.name] = alloc;
     if (assignmentExpression != nullptr) {
@@ -364,9 +271,20 @@ Value* FunctionDeclarationNode::generateCode(CodeGenerationContext& context) {
     LLVMContext& llvmContext = context.getLLVMContext();
     vector<Type*> argumentTypes;
     for (VariableDeclarationNode* argument : arguments) {
-        argumentTypes.push_back(typeOf(argument->type, llvmContext));
+        argumentTypes.push_back(TypeConverter::typeOf(argument->type.name, llvmContext));
     }
-    Type* returnType = typeOf(type, llvmContext);
+
+    OolongFunction oolongFunction(id.name, argumentTypes, &llvmContext);
+    if (context.getImporter().findFunction(oolongFunction, true) != nullptr) {
+        // exact match
+        return error(context, "Redefinition of function " + to_string(oolongFunction));
+    }
+    if (context.getImporter().findFunction(oolongFunction, false) != nullptr) {
+        // close match
+        warning(context, "Potential conflicting definition of function " + to_string(oolongFunction));
+    }
+
+    Type* returnType = TypeConverter::typeOf(type.name, llvmContext);
     FunctionType *ftype = FunctionType::get(returnType, makeArrayRef(argumentTypes), false);
     Function *function = nullptr;
     if (id.name == "main") {
@@ -378,6 +296,9 @@ Value* FunctionDeclarationNode::generateCode(CodeGenerationContext& context) {
         // normal function, internally linked
         function = Function::Create(ftype, GlobalValue::InternalLinkage, id.name.c_str(), context.getModule());
     }
+
+    context.getImporter().declareFunction(oolongFunction, function);
+
     BasicBlock *bblock = BasicBlock::Create(llvmContext, "entry", function, 0);
 
     context.pushBlock(bblock);
@@ -406,8 +327,7 @@ Value* FunctionDeclarationNode::generateCode(CodeGenerationContext& context) {
 
 Value* ImportStatementNode::generateCode(CodeGenerationContext& context) {
     const string packageName = createReferenceName(reference);
-    Importer importer;
-    importer.importPackage(packageName, context);
+    context.getImporter().importPackage(packageName, &context);
     return nullptr;
 }
 
@@ -420,8 +340,8 @@ Value* IfStatementNode::generateCode(CodeGenerationContext& context) {
     } else {
         // if
         Value* expressionValue = condition->generateCode(context);
-        Type* booleanType = getBooleanType(llvmContext);
-        Value* conditionValue = convertType(booleanType, expressionValue, context);
+        Type* booleanType = TypeConverter::getBooleanType(llvmContext);
+        Value* conditionValue = context.getTypeConverter().convertType(expressionValue, booleanType, &context);
         if (conditionValue == nullptr) {
             return error(context, "Conditional expression must be of type Boolean.");
         }
@@ -499,8 +419,8 @@ Value* WhileLoopNode::generateCode(CodeGenerationContext& context) {
 
     context.pushBlock(startBlock);
     Value* expressionValue = condition->generateCode(context);
-    Type* booleanType = getBooleanType(llvmContext);
-    Value* conditionValue = convertType(booleanType, expressionValue, context);
+    Type* booleanType = TypeConverter::getBooleanType(llvmContext);
+    Value* conditionValue = context.getTypeConverter().convertType(expressionValue, booleanType, &context);
     if (conditionValue == nullptr) {
         return error(context, "Conditional expression must be of type Boolean.");
     }

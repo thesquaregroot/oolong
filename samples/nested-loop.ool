@@ -1,4 +1,6 @@
 
+import io;
+
 function main() : Integer {
     a : Integer = 0;
 
@@ -7,9 +9,15 @@ function main() : Integer {
         j : Integer = 0;
         while (j < 5) {
             a = 10 * i - j;
-            j = j + 1;
+            io.print("a=");
+            io.print(a);
+            io.print(", i=");
+            io.print(i);
+            io.print(", j=");
+            io.printLine(j);
+            j++;
         }
-        i = i + 1;
+        i++;
     }
     return a;
 }
