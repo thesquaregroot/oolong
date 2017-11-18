@@ -38,6 +38,7 @@ static void printUsage() {
     cout << "   --version                   Print version information." << endl;
     cout << "   -h, --help                  Print this information." << endl;
     cout << "   -d, --debug                 Enable debug output." << endl;
+    cout << "   -b, --bison-debug           Enable bison debug output." << endl;
     cout << "   -l, --emit-llvm             Do not link, output LLVM IR." << endl;
     cout << "   -e, --execute               Do not create any artifacts, execute code directly." << endl;
     cout << "   -c, --compile-only          Do not link, output object files." << endl;
@@ -62,7 +63,7 @@ static string getFileName(const string& path) {
         return path;
     }
     else {
-        return path.substr(lastSlash);
+        return path.substr(lastSlash+1);
     }
 }
 
@@ -114,6 +115,9 @@ int main(int argc, char **argv) {
         else if (match(argument, "-d", "--debug")) {
             debug = true;
         }
+        else if (match(argument, "-b", "--bison-debug")) {
+            yydebug = 1;
+        }
         else if (match(argument, "-l", "--emit-llvm")) {
             emitLlvm = true;
             link = false;
@@ -139,11 +143,6 @@ int main(int argc, char **argv) {
     }
     //// collect arguments (end)
 
-    // enable debug
-    if (debug) {
-        yydebug = 1;
-    }
-
     if (execute && inputFiles.size() > 1) {
         cerr << "Execute option is only valid with a single input file." << endl;
         return 1;
@@ -162,13 +161,23 @@ int main(int argc, char **argv) {
     string tempDirPath = "";
     if (link) {
         char tempDirTemplate[] = "/tmp/oolong_XXXXXXXX";
+        if (debug) {
+            cout << "Creating temporary directory for generated object files..." << endl;
+        }
         tempDirPath = string(mkdtemp(tempDirTemplate));
+        if (debug) {
+            cout << "Created temporary directory " << tempDirPath << endl;
+        }
     }
     vector<string> objectFiles;
+    int errorCode = 0;
     for (string inputFile : inputFiles) {
         if (isObjectFile(inputFile)) {
             // no need to do anything, just add it to the object files vector
             objectFiles.push_back(inputFile);
+            if (debug) {
+                cout << "Added object file " << inputFile << endl;
+            }
             continue;
         }
 
@@ -180,6 +189,9 @@ int main(int argc, char **argv) {
             currentParseFile = "<stdin>";
 
             setYyin(stdin);
+            if (debug) {
+                cout << "Parsing file " << currentParseFile << endl;
+            }
             parseValue = yyparse();
         }
         else {
@@ -194,6 +206,9 @@ int main(int argc, char **argv) {
             }
 
             setYyin(fp);
+            if (debug) {
+                cout << "Parsing file " << currentParseFile << endl;
+            }
             parseValue = yyparse();
             fclose(fp);
 
@@ -203,19 +218,26 @@ int main(int argc, char **argv) {
         }
         if (link) {
             // no need to put output files in-place, create temp files
-            outputName = tempDirPath + getFileName(outputName);
+            outputName = tempDirPath + '/' + getFileName(outputName);
         }
         else {
             // not linking, outputFile should be used instead, if changed
             if (outputFile != DEFAULT_OUTPUT_FILE) {
                 outputName = outputFile;
+                if (debug) {
+                    cout << "Output file set to " << outputName << endl;
+                }
             }
         }
         objectFiles.push_back(outputName);
 
         // don't continue if parse failed
         if (parseValue > 0) {
-            return parseValue;
+            errorCode = parseValue;
+            if (debug) {
+                cout << "Parse failed with value " << parseValue << " continuing to next file..." << endl;
+            }
+            continue;
         }
 
         CodeGenerationContext context(moduleName);
@@ -224,16 +246,30 @@ int main(int argc, char **argv) {
         int returnValue = context.generateCode(*programNode);
         if (returnValue > 0) {
             // unable to generate code, bail out
-            return returnValue;
+            errorCode = returnValue;
+            if (debug) {
+                cout << "Code generation failed with value " << returnValue << ".  Bailing out." << endl;
+            }
+            break;
         }
         if (execute) {
-            return context.runCode().IntVal.getLimitedValue(0);
+            if (debug) {
+                cout << "Execution failed with value " << context.runCode().IntVal.toString(10, true) << "." << endl;
+            }
+            errorCode = context.runCode().IntVal.getLimitedValue(0);
+            break;
         }
     }
     if (link) {
+        if (debug) {
+            cout << "Linking files..." << endl;
+        }
         linkFiles(outputFile, objectFiles);
+        if (debug) {
+            cout << "Removing temporary files..." << endl;
+        }
         removeTempDirectory(tempDirPath);
     }
-    return 0;
+    return errorCode;
 }
 
