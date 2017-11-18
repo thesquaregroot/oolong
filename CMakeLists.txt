@@ -48,5 +48,5 @@ endif()
 set(COMPONENT_LIST all)
 llvm_map_components_to_libnames(LLVM_LIBS ${COMPONENT_LIST})
 
-target_link_libraries(oolong $<TARGET_FILE:packages> ${LLVM_LIBS})
+target_link_libraries(oolong packages ${LLVM_LIBS})
 
