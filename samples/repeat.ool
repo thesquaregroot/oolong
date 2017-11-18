@@ -1,0 +1,12 @@
+
+import io;
+
+function main() : Integer {
+    io.print("Say something: ");
+    input : String = io.readLine();
+
+    io.print("You said:      ");
+    io.print(input);
+
+    return 0;
+}

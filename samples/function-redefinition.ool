@@ -1,0 +1,16 @@
+
+function test() : Integer {
+    return 0;
+}
+
+function test() : String {
+    return "a";
+}
+
+import io;
+
+function main() : Integer {
+    io.print(test());
+    return 0;
+}
+

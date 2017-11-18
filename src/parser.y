@@ -5,6 +5,7 @@
     #define YYDEBUG 1
     #include "abstract-syntax-tree.h"
     #include "tokens.h"
+    #include "common.h"
     #include <stdio.h>
 
     BlockNode* programNode; /* the top level root node of our final AST */
@@ -16,16 +17,6 @@
 
     void yyerror(const char *s) {
         fprintf(stderr, "ERROR: In file %s (line %d: %d-%d): %s\n", currentParseFile, yylineno, tokenStart, tokenEnd, s);
-    }
-
-    void replaceAll(std::string& value, const std::string substring, const std::string replacement) {
-        size_t index = value.find(substring);
-        while (index != std::string::npos) {
-            // replace \" sequence with just "
-            value.replace(index, substring.length(), replacement);
-            // re-search starting at end of replacement
-            index = value.find("\\\"", index + replacement.length() - 1);
-        }
     }
 
     std::string interpretString(const std::string& input) {

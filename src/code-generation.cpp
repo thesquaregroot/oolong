@@ -13,6 +13,7 @@
 #include <llvm/IR/CallingConv.h>
 #include <llvm/IR/IRPrintingPasses.h>
 #include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/Verifier.h>
 #include <llvm/Bitcode/BitcodeReader.h>
 #include <llvm/Bitcode/BitcodeWriter.h>
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
@@ -42,7 +43,8 @@ void CodeGenerationContext::setOutputName(const string& value) {
 
 // Compile the AST into a module
 int CodeGenerationContext::generateCode(BlockNode& root) {
-	root.generateCode(*this);
+    importer.importPackage("", this); // import default package
+    root.generateCode(*this);
 
     // save IR
     std::string intermediateRepresentation;
@@ -59,6 +61,12 @@ int CodeGenerationContext::generateCode(BlockNode& root) {
             outputFile.flush();
             outputFile.close();
         }
+    }
+
+    // verify module
+    if (/*int errorCode = */verifyModule(*module, &errs())) {
+        //errs() << "Invalid module, bailing out.\n";
+        //return errorCode;
     }
 
     // Initialize the target registry etc.
@@ -142,7 +150,11 @@ BasicBlock* CodeGenerationContext::currentBlock() {
 }
 
 Function* CodeGenerationContext::currentFunction() {
-    return blocks.back()->block->getParent();
+    if (blocks.size() > 0) {
+        return blocks.back()->block->getParent();
+    } else {
+        return nullptr;
+    }
 }
 
 LLVMContext& CodeGenerationContext::getLLVMContext() {
@@ -196,5 +208,13 @@ bool CodeGenerationContext::currentBlockReturns() {
         return false;
     }
     return blocks.back()->hasReturnValue;
+}
+
+TypeConverter& CodeGenerationContext::getTypeConverter() {
+    return this->typeConverter;
+}
+
+Importer& CodeGenerationContext::getImporter() {
+    return this->importer;
 }
 

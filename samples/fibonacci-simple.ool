@@ -1,3 +1,4 @@
+import io;
 
 function fibonacci(n: Integer) : Integer {
     if (n <= 1) {
@@ -9,6 +10,8 @@ function fibonacci(n: Integer) : Integer {
 }
 
 function main() : Integer {
-    return fibonacci(10);
+    io.print("The tenth fibonacci number is: ");
+    io.printLine(fibonacci(10));
+    return 0;
 }
 

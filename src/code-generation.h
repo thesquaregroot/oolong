@@ -1,6 +1,8 @@
 #ifndef CODE_GENERATION_H
 #define CODE_GENERATION_H
 
+#include "importer.h"
+#include "type-converter.h"
 #include <deque>
 #include <map>
 
@@ -31,6 +33,8 @@ private:
     llvm::Module *module;
     std::deque<CodeGenerationBlock*> blocks; // deque instead of stack to allow or iteration
     llvm::Function *mainFunction;
+    TypeConverter typeConverter;
+    Importer importer;
 
 public:
     CodeGenerationContext(const std::string& unitName);
@@ -54,6 +58,8 @@ public:
     void setCurrentReturnValue(llvm::Value *value);
     llvm::Value* getCurrentReturnValue();
     bool currentBlockReturns();
+    TypeConverter& getTypeConverter();
+    Importer& getImporter();
 };
 
 #endif

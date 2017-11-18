@@ -9,6 +9,7 @@
 #include <cstdio>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 using namespace std;
 using namespace llvm;
@@ -79,7 +80,7 @@ static void linkFiles(const string& outputFile, vector<string> objectFiles) {
         command << " " << objectFile;
     }
     // add oolong packages
-    command << " lib/*.o";
+    command << " lib/* -lm";
     system(command.str().c_str());
 }
 
@@ -186,6 +187,12 @@ int main(int argc, char **argv) {
             currentParseFile = inputFile.c_str();
 
             FILE* fp = fopen(currentParseFile, "r");
+            if (fp == nullptr) {
+                currentParseFile = nullptr;
+                cerr << "Unable to open file: " << inputFile << endl;
+                return 1;
+            }
+
             setYyin(fp);
             parseValue = yyparse();
             fclose(fp);
