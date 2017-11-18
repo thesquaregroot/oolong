@@ -15,15 +15,15 @@ set(SRC_DIR "${PROJECT_SOURCE_DIR}/src")
 file(GLOB SRCS ${SRC_DIR}/*.cpp)
 
 ### bison and flex ###
-find_package(BISON)
-find_package(FLEX)
+find_package(BISON "3.0")
+find_package(FLEX "2.5")
 
 bison_target(parser ${SRC_DIR}/parser.y ${SRC_DIR}/parser.cpp COMPILE_FLAGS "-v")
 flex_target(tokens ${SRC_DIR}/tokens.l ${SRC_DIR}/tokens.cpp COMPILE_FLAGS "--header-file=${SRC_DIR}/tokens.h")
 add_flex_bison_dependency(tokens parser)
 
 ### llvm (find) ###
-find_package(LLVM REQUIRED CONFIG)
+find_package(LLVM "5.0" REQUIRED CONFIG)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 
