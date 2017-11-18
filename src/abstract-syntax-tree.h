@@ -221,6 +221,18 @@ public:
     virtual llvm::Value* generateCode(CodeGenerationContext& context);
 };
 
+class ForLoopNode : public StatementNode {
+public:
+    ForLoopNode(StatementNode* initializer, ExpressionNode* condition, ExpressionNode* afterthought, BlockNode& block) : initializer(initializer), condition(condition), afterthought(afterthought), block(block) {}
+
+    StatementNode* initializer = nullptr;
+    ExpressionNode* condition = nullptr;
+    ExpressionNode* afterthought = nullptr;
+    BlockNode& block;
+
+    virtual llvm::Value* generateCode(CodeGenerationContext& context);
+};
+
 class IncrementExpressionNode : public ExpressionNode {
 public:
     IncrementExpressionNode(AssignableNode& assignable, bool postfix) : assignable(assignable), postfix(postfix) {}
