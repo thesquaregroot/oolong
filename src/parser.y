@@ -57,10 +57,10 @@
 %token <string> TOKEN_INTEGER_LITERAL TOKEN_DOUBLE_LITERAL TOKEN_STRING_LITERAL TOKEN_BOOLEAN_LITERAL
 %token <token> TOKEN_FUNCTION TOKEN_IMPORT TOKEN_RETURN TOKEN_AND TOKEN_OR
 %token <token> TOKEN_EQUAL_TO TOKEN_NOT_EQUAL_TO TOKEN_LESS_THAN TOKEN_LESS_THAN_OR_EQUAL_TO TOKEN_GREATER_THAN TOKEN_GREATER_THAN_OR_EQUAL_TO
-%token <token> TOKEN_ASSIGNMENT TOKEN_SEMICOLON TOKEN_COLON TOKEN_COMMA TOKEN_PERIOD
+%token <token> TOKEN_EQUALS TOKEN_SEMICOLON TOKEN_COLON TOKEN_COMMA TOKEN_PERIOD
 %token <token> TOKEN_LEFT_PARENTHESIS TOKEN_RIGHT_PARENTHESIS TOKEN_LEFT_BRACE TOKEN_RIGHT_BRACE
 %token <token> TOKEN_PLUS TOKEN_MINUS TOKEN_MULTIPLY TOKEN_DIVIDE TOKEN_PERCENT
-%token <token> TOKEN_IF TOKEN_ELSE TOKEN_NOT TOKEN_WHILE
+%token <token> TOKEN_IF TOKEN_ELSE TOKEN_NOT TOKEN_WHILE TOKEN_FOR
 %token <token> TOKEN_ADD_ASSIGN TOKEN_SUBTRACT_ASSIGN TOKEN_MULTIPLY_ASSIGN TOKEN_DIVIDE_ASSIGN TOKEN_MODULO_ASSIGN
 %token <token> TOKEN_INCREMENT TOKEN_DECREMENT
 
@@ -122,12 +122,7 @@ statement : TOKEN_IMPORT reference TOKEN_SEMICOLON
                 {
                     $$ = $1;
                 }
-          | variable_declaration TOKEN_ASSIGNMENT expression TOKEN_SEMICOLON
-                {
-                    $1->assignmentExpression = $3;
-                    $$ = $1;
-                }
-          | assignment_statement
+          | assignment_statement TOKEN_SEMICOLON
           | expression TOKEN_SEMICOLON
                 {
                     $$ = new ExpressionStatementNode(*$1);
@@ -152,6 +147,14 @@ statement : TOKEN_IMPORT reference TOKEN_SEMICOLON
                 {
                     $$ = new WhileLoopNode($3, *$5);
                 }
+          | TOKEN_FOR TOKEN_LEFT_PARENTHESIS assignment_statement TOKEN_SEMICOLON expression TOKEN_SEMICOLON expression TOKEN_RIGHT_PARENTHESIS block
+                {
+                    $$ = new ForLoopNode($3, $5, $7, *$9);
+                }
+          /*
+            range-based for-loop
+          | TOKEN_FOR TOKEN_LEFT_PARENTHESIS variable_declaration TOKEN_COLON expression TOKEN_RIGHT_PARENTHESIS block
+          */
           ;
 
 reference : identifier
@@ -177,6 +180,10 @@ block : TOKEN_LEFT_BRACE statement_list TOKEN_RIGHT_BRACE
                 $$ = new BlockNode();
                 $$->statements = *$2;
             }
+      | TOKEN_LEFT_BRACE TOKEN_RIGHT_BRACE
+            {
+                $$ = new BlockNode();
+            }
       ;
 
 else_list : TOKEN_ELSE block
@@ -197,35 +204,40 @@ else_if : TOKEN_ELSE
         | TOKEN_ELSE TOKEN_IF
         ;
 
-assignment_statement : assignable TOKEN_ASSIGNMENT expression TOKEN_SEMICOLON
+assignment_statement : variable_declaration TOKEN_EQUALS expression
+                        {
+                            $1->assignmentExpression = $3;
+                            $$ = $1;
+                        }
+                     | assignable TOKEN_EQUALS expression
                         {
                             $$ = new AssignmentNode(*$1, *$3);
                         }
-                     | assignable TOKEN_ADD_ASSIGN expression TOKEN_SEMICOLON
+                     | assignable TOKEN_ADD_ASSIGN expression
                         {
                             auto variableReference = new ReferenceNode(*$1);
                             auto calculation = new BinaryOperatorNode(*variableReference, (int)TOKEN_PLUS, *$3);
                             $$ = new AssignmentNode(*$1, *calculation);
                         }
-                     | assignable TOKEN_SUBTRACT_ASSIGN expression TOKEN_SEMICOLON
+                     | assignable TOKEN_SUBTRACT_ASSIGN expression
                         {
                             auto variableReference = new ReferenceNode(*$1);
                             auto calculation = new BinaryOperatorNode(*variableReference, (int)TOKEN_MINUS, *$3);
                             $$ = new AssignmentNode(*$1, *calculation);
                         }
-                     | assignable TOKEN_MULTIPLY_ASSIGN expression TOKEN_SEMICOLON
+                     | assignable TOKEN_MULTIPLY_ASSIGN expression
                         {
                             auto variableReference = new ReferenceNode(*$1);
                             auto calculation = new BinaryOperatorNode(*variableReference, (int)TOKEN_MULTIPLY, *$3);
                             $$ = new AssignmentNode(*$1, *calculation);
                         }
-                     | assignable TOKEN_DIVIDE_ASSIGN expression TOKEN_SEMICOLON
+                     | assignable TOKEN_DIVIDE_ASSIGN expression
                         {
                             auto variableReference = new ReferenceNode(*$1);
                             auto calculation = new BinaryOperatorNode(*variableReference, (int)TOKEN_DIVIDE, *$3);
                             $$ = new AssignmentNode(*$1, *calculation);
                         }
-                     | assignable TOKEN_MODULO_ASSIGN expression TOKEN_SEMICOLON
+                     | assignable TOKEN_MODULO_ASSIGN expression
                         {
                             auto variableReference = new ReferenceNode(*$1);
                             auto calculation = new BinaryOperatorNode(*variableReference, (int)TOKEN_PERCENT, *$3);
