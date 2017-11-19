@@ -4,6 +4,7 @@ project(oolong)
 ### Version ###
 set(oolong_VERSION_MAJOR 1)
 set(oolong_VERSION_MINOR 0)
+file(READ ${PROJECT_SOURCE_DIR}/LICENSE oolong_LICENSE)
 configure_file(
   "${PROJECT_SOURCE_DIR}/src/oolong.h.in"
   "${PROJECT_BINARY_DIR}/oolong.h"

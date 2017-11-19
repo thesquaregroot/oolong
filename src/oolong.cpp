@@ -1,3 +1,20 @@
+
+// Oolong - A compiler for the Oolong programming language.
+// Copyright (C) 2017  Andrew Groot
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 #include "abstract-syntax-tree.h"
 #include "code-generation.h"
 #include "oolong.h"
@@ -26,6 +43,20 @@ const char* currentParseFile = nullptr;
 
 static void printVersion() {
     cout << "Oolong, version " << OOLONG_MAJOR_VERSION << "." << OOLONG_MINOR_VERSION << endl;
+    cout << endl;
+    cout << "Copyright (C) 2017  Andrew Groot" << endl;
+    cout << "This program comes with ABSOLUTELY NO WARRANTY." << endl;
+    cout << "This is free software, and you are welcome to redistribute it" << endl;
+    cout << "under certain conditions.  Type `oolong --license' for details." << endl;
+}
+
+static void printLicense() {
+    cout << "Oolong - A compiler for the Oolong programming language." << endl;
+    cout << "Copyright (C) 2017  Andrew Groot" << endl;
+    cout << endl;
+    cout << "===========================================================================" << endl;
+    cout << endl;
+    cout << OOLONG_LICENSE << endl;
 }
 
 static void printUsage() {
@@ -36,6 +67,7 @@ static void printUsage() {
     cout << endl;
     cout << "Options" << endl;
     cout << "   --version                   Print version information." << endl;
+    cout << "   --license                   Print license information." << endl;
     cout << "   -h, --help                  Print this information." << endl;
     cout << "   -d, --debug                 Enable debug output." << endl;
     cout << "   -b, --bison-debug           Enable bison debug output." << endl;
@@ -106,6 +138,10 @@ int main(int argc, char **argv) {
 
         if (match(argument, nullptr, "--version")) {
             printVersion();
+            return 0;
+        }
+        if (match(argument, nullptr, "--license")) {
+            printLicense();
             return 0;
         }
         else if (match(argument, "-h", "--help")) {

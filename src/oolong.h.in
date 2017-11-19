@@ -2,3 +2,6 @@
 #define OOLONG_MAJOR_VERSION @oolong_VERSION_MAJOR@
 #define OOLONG_MINOR_VERSION @oolong_VERSION_MINOR@
 
+// include license file as a raw string
+const char* OOLONG_LICENSE = R"=-=-=-=-=(@oolong_LICENSE@)=-=-=-=-=";
+
