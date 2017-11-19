@@ -14,10 +14,12 @@ class OolongFunction {
 private:
     std::string name;
     std::vector<llvm::Type*> arguments;
-    llvm::LLVMContext* llvmContext;
+    CodeGenerationContext* context;
+
+    friend std::string to_string(const OolongFunction& function);
 
 public:
-    OolongFunction(const std::string& name, const std::vector<llvm::Type*> arguments, llvm::LLVMContext* llvmContext) : name(name), arguments(arguments), llvmContext(llvmContext) {}
+    OolongFunction(const std::string& name, const std::vector<llvm::Type*> arguments, CodeGenerationContext* context) : name(name), arguments(arguments), context(context) {}
 
     std::string getName() const;
     std::vector<llvm::Type*> getArguments() const;
@@ -33,12 +35,15 @@ std::string to_string(const OolongFunction& function);
 
 class Importer {
 private:
+    CodeGenerationContext* context;
     std::map<OolongFunction, llvm::Function*> importedFunctions;
 
 public:
+    Importer(CodeGenerationContext* context) : context(context) {}
+
     void declareFunction(const OolongFunction& function, llvm::Function* functionReference);
-    void declareExternalFunction(llvm::Type* returnType, const OolongFunction& function, CodeGenerationContext* context);
-    bool importPackage(const std::string& package, CodeGenerationContext* context);
+    void declareExternalFunction(llvm::Type* returnType, const OolongFunction& function);
+    bool importPackage(const std::string& package);
     llvm::Function* findFunction(const OolongFunction& function) const;
     llvm::Function* findFunction(const OolongFunction& function, bool exactMatch) const;
 };

@@ -49,8 +49,25 @@ Type* TypeConverter::getStringType(LLVMContext& llvmContext) {
     return Type::getInt8PtrTy(llvmContext);
 }
 
+Type* TypeConverter::getBooleanType() {
+    return TypeConverter::getBooleanType(context->getLLVMContext());
+}
+
+Type* TypeConverter::getIntegerType() {
+    return TypeConverter::getIntegerType(context->getLLVMContext());
+}
+
+Type* TypeConverter::getDoubleType() {
+    return TypeConverter::getDoubleType(context->getLLVMContext());
+}
+
+Type* TypeConverter::getStringType() {
+    return TypeConverter::getStringType(context->getLLVMContext());
+}
+
 /* Returns an LLVM type based on the identifier */
-Type* TypeConverter::typeOf(const string& name, LLVMContext& llvmContext) {
+Type* TypeConverter::typeOf(const string& name) {
+    LLVMContext& llvmContext = context->getLLVMContext();
     if (name == "Boolean") {
         return getBooleanType(llvmContext);
     }
@@ -105,15 +122,15 @@ string TypeConverter::getTypeName(Type* type) {
     }
 }
 
-bool TypeConverter::canConvertType(Type* sourceType, Type* targetType, LLVMContext* llvmContext) {
+bool TypeConverter::canConvertType(Type* sourceType, Type* targetType) {
     //cout << "Checking conversion from " << getTypeName(sourceType) << " to " << getTypeName(targetType) << endl;
 
     if (sourceType == targetType) {
         return true;
     }
 
-    Type* integerType = getIntegerType(*llvmContext);
-    Type* doubleType = getDoubleType(*llvmContext);
+    Type* integerType = getIntegerType();
+    Type* doubleType = getDoubleType();
 
     // Double target
     if (targetType == doubleType) {
@@ -126,10 +143,8 @@ bool TypeConverter::canConvertType(Type* sourceType, Type* targetType, LLVMConte
     return false;
 }
 
-Value* TypeConverter::convertType(Value* value, Type* targetType, CodeGenerationContext* context) {
+Value* TypeConverter::convertType(Value* value, Type* targetType) {
     //cout << "Attempting conversion from " << getTypeName(sourceType) << " to " << getTypeName(targetType) << endl;
-
-    LLVMContext& llvmContext = context->getLLVMContext();
 
     Type* valueType = value->getType();
     if (targetType == valueType) {
@@ -137,8 +152,8 @@ Value* TypeConverter::convertType(Value* value, Type* targetType, CodeGeneration
         return value;
     }
 
-    Type* integerType = getIntegerType(llvmContext);
-    Type* doubleType = getDoubleType(llvmContext);
+    Type* integerType = getIntegerType();
+    Type* doubleType = getDoubleType();
 
     // double target
     if (targetType == doubleType) {

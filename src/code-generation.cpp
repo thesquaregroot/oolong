@@ -45,7 +45,7 @@
 using namespace std;
 using namespace llvm;
 
-CodeGenerationContext::CodeGenerationContext(const string& unitName) {
+CodeGenerationContext::CodeGenerationContext(const string& unitName) : typeConverter(this), importer(this) {
     llvmContext = new LLVMContext();
     module = new Module(unitName, *llvmContext);
 }
@@ -60,7 +60,7 @@ void CodeGenerationContext::setOutputName(const string& value) {
 
 // Compile the AST into a module
 int CodeGenerationContext::generateCode(BlockNode& root) {
-    importer.importPackage("", this); // import default package
+    importer.importPackage(""); // import default package
     root.generateCode(*this);
 
     // save IR

@@ -108,7 +108,7 @@ Value* FunctionCallNode::generateCode(CodeGenerationContext& context) {
         callingTypes.push_back(callingArgument->getType());
         callIt++;
     }
-    OolongFunction targetFunction(functionName, callingTypes, &context.getLLVMContext());
+    OolongFunction targetFunction(functionName, callingTypes, &context);
     Function *function = context.getImporter().findFunction(targetFunction);
     if (function == nullptr) {
         return error(context, "No such function: " + to_string(targetFunction));
@@ -119,7 +119,7 @@ Value* FunctionCallNode::generateCode(CodeGenerationContext& context) {
     while (declaredIt != function->arg_end()) {
         Argument* declaredArgument = declaredIt;
         Value* callingArgument = callingArguments[position];
-        Value* convertedArgument = context.getTypeConverter().convertType(callingArgument, declaredArgument->getType(), &context);
+        Value* convertedArgument = context.getTypeConverter().convertType(callingArgument, declaredArgument->getType());
         if (convertedArgument == nullptr) {
             return error(context, "Invalid argument for function " + functionName + " (position " + to_string(position+1) + ")");
         }
@@ -140,21 +140,22 @@ Value* BinaryOperatorNode::generateCode(CodeGenerationContext& context) {
 
     bool isInteger = true;
     LLVMContext& llvmContext = context.getLLVMContext();
-    Type* booleanType = TypeConverter::getBooleanType(llvmContext);
-    Type* integerType = TypeConverter::getIntegerType(llvmContext);
-    Type* doubleType = TypeConverter::getDoubleType(llvmContext);
+    TypeConverter& typeConverter = context.getTypeConverter();
+    Type* booleanType = typeConverter.getBooleanType(llvmContext);
+    Type* integerType = typeConverter.getIntegerType(llvmContext);
+    Type* doubleType = typeConverter.getDoubleType(llvmContext);
     // change isInteger if either type is a float
     if (!(leftType == booleanType || leftType == integerType || leftType == doubleType)) {
         // leftType is not integer or float
-        return error(context, "Unable to perform binary operation with type " + TypeConverter::getTypeName(leftType));
+        return error(context, "Unable to perform binary operation with type " + typeConverter.getTypeName(leftType));
     }
     if (!(rightType == booleanType || rightType == integerType || rightType == doubleType)) {
         // rightType is not integer or double
-        return error(context, "Unable to perform binary operation with type " + TypeConverter::getTypeName(rightType));
+        return error(context, "Unable to perform binary operation with type " + typeConverter.getTypeName(rightType));
     }
     if (leftType == doubleType || rightType == doubleType) {
-        left = context.getTypeConverter().convertType(left, doubleType, &context);
-        right = context.getTypeConverter().convertType(right, doubleType, &context);
+        left = typeConverter.convertType(left, doubleType);
+        right = typeConverter.convertType(right, doubleType);
         isInteger = false;
     }
 
@@ -194,12 +195,13 @@ Value* UnaryOperatorNode::generateCode(CodeGenerationContext& context) {
     Type* type = value->getType();
 
     LLVMContext& llvmContext = context.getLLVMContext();
-    Type* booleanType = TypeConverter::getBooleanType(llvmContext);
-    Type* integerType = TypeConverter::getIntegerType(llvmContext);
-    Type* doubleType = TypeConverter::getDoubleType(llvmContext);
+    TypeConverter& typeConverter = context.getTypeConverter();
+    Type* booleanType = typeConverter.getBooleanType(llvmContext);
+    Type* integerType = typeConverter.getIntegerType(llvmContext);
+    Type* doubleType = typeConverter.getDoubleType(llvmContext);
     if (!(type == booleanType || type == integerType || type == doubleType)) {
         // expression is not integer or double
-        return error(context, "Unable to perform unary operation with type " + TypeConverter::getTypeName(type));
+        return error(context, "Unable to perform unary operation with type " + typeConverter.getTypeName(type));
     }
     bool isInteger = (type != doubleType);
 
@@ -272,8 +274,8 @@ Value* VariableDeclarationNode::generateCode(CodeGenerationContext& context) {
     if (scope.find(id.name) != scope.end()) {
         return error(context, "Redeclaration of variable " + id.name);
     }
-    LLVMContext& llvmContext = context.getLLVMContext();
-    Type* identifierType = TypeConverter::typeOf(type.name, llvmContext);
+    TypeConverter& typeConverter = context.getTypeConverter();
+    Type* identifierType = typeConverter.typeOf(type.name);
     AllocaInst *alloc = new AllocaInst(identifierType, 0 /* generic address space */, id.name, context.currentBlock());
     context.localScope()[id.name] = alloc;
     if (assignmentExpression != nullptr) {
@@ -286,12 +288,13 @@ Value* VariableDeclarationNode::generateCode(CodeGenerationContext& context) {
 
 Value* FunctionDeclarationNode::generateCode(CodeGenerationContext& context) {
     LLVMContext& llvmContext = context.getLLVMContext();
+    TypeConverter& typeConverter = context.getTypeConverter();
     vector<Type*> argumentTypes;
     for (VariableDeclarationNode* argument : arguments) {
-        argumentTypes.push_back(TypeConverter::typeOf(argument->type.name, llvmContext));
+        argumentTypes.push_back(typeConverter.typeOf(argument->type.name));
     }
 
-    OolongFunction oolongFunction(id.name, argumentTypes, &llvmContext);
+    OolongFunction oolongFunction(id.name, argumentTypes, &context);
     if (context.getImporter().findFunction(oolongFunction, true) != nullptr) {
         // exact match
         return error(context, "Redefinition of function " + to_string(oolongFunction));
@@ -301,7 +304,7 @@ Value* FunctionDeclarationNode::generateCode(CodeGenerationContext& context) {
         warning(context, "Potential conflicting definition of function " + to_string(oolongFunction));
     }
 
-    Type* returnType = TypeConverter::typeOf(type.name, llvmContext);
+    Type* returnType = typeConverter.typeOf(type.name);
     FunctionType *ftype = FunctionType::get(returnType, makeArrayRef(argumentTypes), false);
     Function *function = nullptr;
     if (id.name == "main") {
@@ -344,7 +347,7 @@ Value* FunctionDeclarationNode::generateCode(CodeGenerationContext& context) {
 
 Value* ImportStatementNode::generateCode(CodeGenerationContext& context) {
     const string packageName = createReferenceName(reference);
-    context.getImporter().importPackage(packageName, &context);
+    context.getImporter().importPackage(packageName);
     return nullptr;
 }
 
@@ -358,7 +361,7 @@ Value* IfStatementNode::generateCode(CodeGenerationContext& context) {
         // if
         Value* expressionValue = condition->generateCode(context);
         Type* booleanType = TypeConverter::getBooleanType(llvmContext);
-        Value* conditionValue = context.getTypeConverter().convertType(expressionValue, booleanType, &context);
+        Value* conditionValue = context.getTypeConverter().convertType(expressionValue, booleanType);
         if (conditionValue == nullptr) {
             return error(context, "Conditional expression must be of type Boolean.");
         }
@@ -442,7 +445,7 @@ Value* WhileLoopNode::generateCode(CodeGenerationContext& context) {
     context.pushBlock(startBlock);
     Value* expressionValue = condition->generateCode(context);
     Type* booleanType = TypeConverter::getBooleanType(llvmContext);
-    Value* conditionValue = context.getTypeConverter().convertType(expressionValue, booleanType, &context);
+    Value* conditionValue = context.getTypeConverter().convertType(expressionValue, booleanType);
     if (conditionValue == nullptr) {
         return error(context, "Conditional expression must be of type Boolean.");
     }
@@ -487,7 +490,7 @@ Value* ForLoopNode::generateCode(CodeGenerationContext& context) {
     context.pushBlock(startBlock);
     Value* expressionValue = condition->generateCode(context);
     Type* booleanType = TypeConverter::getBooleanType(llvmContext);
-    Value* conditionValue = context.getTypeConverter().convertType(expressionValue, booleanType, &context);
+    Value* conditionValue = context.getTypeConverter().convertType(expressionValue, booleanType);
     if (conditionValue == nullptr) {
         return error(context, "Conditional expression must be of type Boolean.");
     }
