@@ -391,17 +391,22 @@ Value* IfStatementNode::generateCode(CodeGenerationContext& context) {
         }
 
         PHINode* phiNode = nullptr;
-        // manually pushing back mergeBlock to keep things in order
-        currentFunction->getBasicBlockList().push_back(mergeBlock);
-        if (hasElse && thenValue != nullptr && elseValue != nullptr) {
-            phiNode = PHINode::Create(booleanType, 0, "iftmp", mergeBlock);
-            phiNode->addIncoming(thenValue, thenBlock);
-            phiNode->addIncoming(elseValue, elseBlock);
+        if (thenBlockReturns && elseBlockReturns) {
+            // both paths return, mark this block as returning
+            context.setCurrentReturnValue(nullptr);
         }
+        else {
+            // manually pushing back mergeBlock to keep things in order
+            currentFunction->getBasicBlockList().push_back(mergeBlock);
+            if (hasElse && thenValue != nullptr && elseValue != nullptr) {
+                phiNode = PHINode::Create(booleanType, 0, "iftmp", mergeBlock);
+                phiNode->addIncoming(thenValue, thenBlock);
+                phiNode->addIncoming(elseValue, elseBlock);
+            }
 
-        // make mergeBlock the new current block
-        context.replaceCurrentBlock(mergeBlock);
-
+            // make mergeBlock the new current block
+            context.replaceCurrentBlock(mergeBlock);
+        }
         return phiNode;
     }
 }
