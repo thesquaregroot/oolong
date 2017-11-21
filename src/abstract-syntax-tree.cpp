@@ -108,7 +108,7 @@ Value* FunctionCallNode::generateCode(CodeGenerationContext& context) {
         callingTypes.push_back(callingArgument->getType());
         callIt++;
     }
-    OolongFunction targetFunction(functionName, callingTypes, &context);
+    OolongFunction targetFunction(nullptr, functionName, callingTypes, &context);
     Function *function = context.getImporter().findFunction(targetFunction);
     if (function == nullptr) {
         return error(context, "No such function: " + to_string(targetFunction));
@@ -294,7 +294,8 @@ Value* FunctionDeclarationNode::generateCode(CodeGenerationContext& context) {
         argumentTypes.push_back(typeConverter.typeOf(argument->type.name));
     }
 
-    OolongFunction oolongFunction(id.name, argumentTypes, &context);
+    Type* returnType = typeConverter.typeOf(type.name);
+    OolongFunction oolongFunction(returnType, id.name, argumentTypes, &context);
     if (context.getImporter().findFunction(oolongFunction, true) != nullptr) {
         // exact match
         return error(context, "Redefinition of function " + to_string(oolongFunction));
@@ -303,8 +304,6 @@ Value* FunctionDeclarationNode::generateCode(CodeGenerationContext& context) {
         // close match
         warning(context, "Potential conflicting definition of function " + to_string(oolongFunction));
     }
-
-    Type* returnType = typeConverter.typeOf(type.name);
     FunctionType *ftype = FunctionType::get(returnType, makeArrayRef(argumentTypes), false);
     Function *function = nullptr;
     if (id.name == "main") {

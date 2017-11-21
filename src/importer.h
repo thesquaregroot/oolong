@@ -12,6 +12,7 @@ class CodeGenerationContext;
 
 class OolongFunction {
 private:
+    llvm::Type* returnType;
     std::string name;
     std::vector<llvm::Type*> arguments;
     CodeGenerationContext* context;
@@ -19,8 +20,9 @@ private:
     friend std::string to_string(const OolongFunction& function);
 
 public:
-    OolongFunction(const std::string& name, const std::vector<llvm::Type*> arguments, CodeGenerationContext* context) : name(name), arguments(arguments), context(context) {}
+    OolongFunction(llvm::Type* returnType, const std::string& name, const std::vector<llvm::Type*> arguments, CodeGenerationContext* context) : returnType(returnType), name(name), arguments(arguments), context(context) {}
 
+    llvm::Type* getReturnType() const;
     std::string getName() const;
     std::vector<llvm::Type*> getArguments() const;
     size_t getArgumentCount() const;
@@ -42,7 +44,7 @@ public:
     Importer(CodeGenerationContext* context) : context(context) {}
 
     void declareFunction(const OolongFunction& function, llvm::Function* functionReference);
-    void declareExternalFunction(llvm::Type* returnType, const OolongFunction& function);
+    void declareExternalFunction(const OolongFunction& function);
     bool importPackage(const std::string& package);
     llvm::Function* findFunction(const OolongFunction& function) const;
     llvm::Function* findFunction(const OolongFunction& function, bool exactMatch) const;
