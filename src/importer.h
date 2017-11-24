@@ -24,6 +24,8 @@ public:
 
     llvm::Type* getReturnType() const;
     std::string getName() const;
+    std::string getFunctionName() const;
+    std::string getPackageName() const;
     std::vector<llvm::Type*> getArguments() const;
     size_t getArgumentCount() const;
 
@@ -38,6 +40,7 @@ std::string to_string(const OolongFunction& function);
 class Importer {
 private:
     CodeGenerationContext* context;
+    std::map<std::string, std::vector<OolongFunction>> packages;
     std::map<OolongFunction, llvm::Function*> importedFunctions;
 
 public:
@@ -45,6 +48,7 @@ public:
 
     void declareFunction(const OolongFunction& function, llvm::Function* functionReference);
     void declareExternalFunction(const OolongFunction& function);
+    void loadStandardLibrary(const std::string& archiveLocation);
     bool importPackage(const std::string& package);
     llvm::Function* findFunction(const OolongFunction& function) const;
     llvm::Function* findFunction(const OolongFunction& function, bool exactMatch) const;

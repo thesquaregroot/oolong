@@ -60,7 +60,11 @@ void CodeGenerationContext::setOutputName(const string& value) {
 
 // Compile the AST into a module
 int CodeGenerationContext::generateCode(BlockNode& root) {
-    importer.importPackage(""); // import default package
+    // load standard library and auto-import default package
+    // TODO: determine archive path some other / allow overriding it
+    importer.loadStandardLibrary("lib/libpackages.a");
+    importer.importPackage("");
+
     root.generateCode(*this);
 
     // save IR
