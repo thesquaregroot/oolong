@@ -55,7 +55,7 @@
 %token <string> TOKEN_IDENTIFIER
 %token <string> TOKEN_INTEGER TOKEN_DOUBLE TOKEN_STRING TOKEN_BOOLEAN
 %token <string> TOKEN_INTEGER_LITERAL TOKEN_DOUBLE_LITERAL TOKEN_STRING_LITERAL TOKEN_BOOLEAN_LITERAL
-%token <token> TOKEN_FUNCTION TOKEN_IMPORT TOKEN_RETURN TOKEN_AND TOKEN_OR
+%token <token> TOKEN_FUNCTION TOKEN_EXTERNAL TOKEN_IMPORT TOKEN_RETURN TOKEN_AND TOKEN_OR
 %token <token> TOKEN_EQUAL_TO TOKEN_NOT_EQUAL_TO TOKEN_LESS_THAN TOKEN_LESS_THAN_OR_EQUAL_TO TOKEN_GREATER_THAN TOKEN_GREATER_THAN_OR_EQUAL_TO
 %token <token> TOKEN_EQUALS TOKEN_SEMICOLON TOKEN_COLON TOKEN_COMMA TOKEN_PERIOD
 %token <token> TOKEN_LEFT_PARENTHESIS TOKEN_RIGHT_PARENTHESIS TOKEN_LEFT_BRACE TOKEN_RIGHT_BRACE
@@ -172,6 +172,20 @@ reference : identifier
 function_declaration : TOKEN_FUNCTION identifier TOKEN_LEFT_PARENTHESIS function_declaration_argument_list TOKEN_RIGHT_PARENTHESIS TOKEN_COLON type block
                         {
                             $$ = new FunctionDeclarationNode(*$7, *$2, *$4, *$8);
+                        }
+                     | TOKEN_FUNCTION identifier TOKEN_LEFT_PARENTHESIS function_declaration_argument_list TOKEN_RIGHT_PARENTHESIS block
+                        {
+                            IdentifierNode* voidType = new IdentifierNode("Void");
+                            $$ = new FunctionDeclarationNode(*voidType, *$2, *$4, *$6);
+                        }
+                     | TOKEN_EXTERNAL TOKEN_FUNCTION identifier TOKEN_LEFT_PARENTHESIS function_declaration_argument_list TOKEN_RIGHT_PARENTHESIS TOKEN_COLON type TOKEN_EQUALS identifier TOKEN_SEMICOLON
+                        {
+                            $$ = new ExternalFunctionDeclarationNode(*$8, *$3, *$5, *$10);
+                        }
+                     | TOKEN_EXTERNAL TOKEN_FUNCTION identifier TOKEN_LEFT_PARENTHESIS function_declaration_argument_list TOKEN_RIGHT_PARENTHESIS TOKEN_EQUALS identifier TOKEN_SEMICOLON
+                        {
+                            IdentifierNode* voidType = new IdentifierNode("Void");
+                            $$ = new ExternalFunctionDeclarationNode(*voidType, *$3, *$5, *$8);
                         }
                      ;
 

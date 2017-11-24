@@ -48,6 +48,7 @@ public:
 
     void declareFunction(const OolongFunction& function, llvm::Function* functionReference);
     void declareExternalFunction(const OolongFunction& function);
+    void declareExternalFunction(const OolongFunction& function, const std::string& externalName);
     void loadStandardLibrary(const std::string& archiveLocation);
     bool importPackage(const std::string& package);
     llvm::Function* findFunction(const OolongFunction& function) const;

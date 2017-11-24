@@ -154,9 +154,6 @@ string to_string(const OolongFunction& function) {
 static string convertOolongFunctionToExternalFunction(const OolongFunction& name, CodeGenerationContext* context);
 static OolongFunction convertExternalFunctionToOolongFunction(const string& name, CodeGenerationContext* context);
 
-//static void createDefaultFunctions(Importer* importer, CodeGenerationContext* context);
-//static void createIoFunctions(Importer* importer, CodeGenerationContext* context);
-
 void Importer::declareFunction(const OolongFunction& function, Function* functionReference) {
     importedFunctions[function] = functionReference;
 
@@ -165,7 +162,10 @@ void Importer::declareFunction(const OolongFunction& function, Function* functio
 
 void Importer::declareExternalFunction(const OolongFunction& function) {
     string externalName = convertOolongFunctionToExternalFunction(function, context);
+    declareExternalFunction(function, externalName);
+}
 
+void Importer::declareExternalFunction(const OolongFunction& function, const string& externalName) {
     FunctionType* functionType = FunctionType::get(function.getReturnType(), function.getArguments(), true);
     Function* functionReference = Function::Create(functionType, Function::ExternalLinkage, Twine(externalName), context->getModule());
     functionReference->setCallingConv(CallingConv::C);
@@ -176,6 +176,7 @@ void Importer::declareExternalFunction(const OolongFunction& function) {
 }
 
 void Importer::loadStandardLibrary(const string& archiveLocation) {
+    TypeConverter& typeConverter = context->getTypeConverter();
     auto packageArchiveOrError = MemoryBuffer::getFile(archiveLocation);
     // TODO: handle possible errors
     MemoryBuffer* packageArchiveBuffer = packageArchiveOrError.get().get();

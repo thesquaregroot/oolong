@@ -344,6 +344,22 @@ Value* FunctionDeclarationNode::generateCode(CodeGenerationContext& context) {
     return function;
 }
 
+Value* ExternalFunctionDeclarationNode::generateCode(CodeGenerationContext& context) {
+    TypeConverter& typeConverter = context.getTypeConverter();
+
+    Type* returnType = typeConverter.typeOf(type.name);
+
+    vector<Type*> argumentTypes;
+    for (VariableDeclarationNode* argument : arguments) {
+        argumentTypes.push_back(typeConverter.typeOf(argument->type.name));
+    }
+
+    OolongFunction function(returnType, id.name, argumentTypes, &context);
+    context.getImporter().declareExternalFunction(function, externalName.name);
+
+    return nullptr;
+}
+
 Value* ImportStatementNode::generateCode(CodeGenerationContext& context) {
     const string packageName = createReferenceName(reference);
     context.getImporter().importPackage(packageName);

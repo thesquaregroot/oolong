@@ -26,6 +26,7 @@
 [/][*]                                  FATAL_ERROR("Unterminated comment!\n");
 [ \t]                                   TRACK_TOKEN_LOCATION;
 "function"                              TRACK_TOKEN_LOCATION; return TOKEN(TOKEN_FUNCTION);
+"external"                              TRACK_TOKEN_LOCATION; return TOKEN(TOKEN_EXTERNAL);
 "import"                                TRACK_TOKEN_LOCATION; return TOKEN(TOKEN_IMPORT);
 "return"                                TRACK_TOKEN_LOCATION; return TOKEN(TOKEN_RETURN);
 "Boolean"                               TRACK_TOKEN_LOCATION; return TOKEN(TOKEN_BOOLEAN);

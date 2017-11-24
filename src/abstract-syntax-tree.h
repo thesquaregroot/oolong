@@ -190,6 +190,18 @@ public:
     virtual llvm::Value* generateCode(CodeGenerationContext& context);
 };
 
+class ExternalFunctionDeclarationNode : public StatementNode {
+public:
+    ExternalFunctionDeclarationNode(const IdentifierNode& type, const IdentifierNode& id, VariableList& arguments, const IdentifierNode& externalName) : type(type), id(id), arguments(arguments), externalName(externalName) {}
+
+    const IdentifierNode& type;
+    const IdentifierNode& id;
+    VariableList& arguments;
+    const IdentifierNode& externalName;
+
+    virtual llvm::Value* generateCode(CodeGenerationContext& context);
+};
+
 class ImportStatementNode : public StatementNode {
 public:
     ImportStatementNode(const IdentifierList& reference) : reference(reference) {}
