@@ -177,6 +177,16 @@ void Importer::declareExternalFunction(const OolongFunction& function, const str
 
 void Importer::loadStandardLibrary(const string& archiveLocation) {
     TypeConverter& typeConverter = context->getTypeConverter();
+
+    // create String type
+    LLVMContext& llvmContext = context->getLLVMContext();
+    vector<Type*> stringMembers;
+    stringMembers.push_back(Type::getInt8PtrTy(llvmContext)); // char*
+    stringMembers.push_back(typeConverter.getIntegerType()); // allocated size
+    stringMembers.push_back(typeConverter.getIntegerType()); // used size
+    typeConverter.createType(stringMembers, "String");
+
+    // load package archive
     auto packageArchiveOrError = MemoryBuffer::getFile(archiveLocation);
     // TODO: handle possible errors
     MemoryBuffer* packageArchiveBuffer = packageArchiveOrError.get().get();
@@ -251,7 +261,7 @@ static OolongFunction convertExternalFunctionToOolongFunction(const string& name
     else {
         returnTypeName = name.substr(0, returnTypeEnd);
     }
-    Type* returnType = typeConverter.typeOf(returnTypeName);
+    Type* returnType = typeConverter.getType(returnTypeName);
 
     size_t functionNameStart = returnTypeEnd + EXTERNAL_FUNCTION_RETURN_TYPE_SEPARATOR.length();
     size_t functionNameEnd = name.find(EXTERNAL_FUNCTION_ARGUMENT_SEPARATOR, functionNameStart);
@@ -281,7 +291,7 @@ static OolongFunction convertExternalFunctionToOolongFunction(const string& name
                 // prepare for next argument
                 argumentStart = argumentEnd + EXTERNAL_FUNCTION_ARGUMENT_SEPARATOR.length();
             }
-            Type* argumentType = typeConverter.typeOf(argument);
+            Type* argumentType = typeConverter.getType(argument);
             arguments.push_back(argumentType);
         }
     }
@@ -290,123 +300,4 @@ static OolongFunction convertExternalFunctionToOolongFunction(const string& name
     OolongFunction function(returnType, functionName, arguments, context);
     return function;
 }
-
-//static void createDefaultFunctions(Importer* importer, CodeGenerationContext* context) {
-//    LLVMContext& llvmContext = context->getLLVMContext();
-//
-//    Type* booleanType = TypeConverter::getBooleanType(llvmContext);
-//    Type* integerType = TypeConverter::getIntegerType(llvmContext);
-//    Type* doubleType = TypeConverter::getDoubleType(llvmContext);
-//    Type* stringType = TypeConverter::getStringType(llvmContext);
-//
-//    // Boolean conversion functions
-//    vector<Type*> arguments;
-//    arguments.push_back(booleanType);
-//    OolongFunction function(integerType, "toInteger", arguments, context);
-//    importer->declareExternalFunction(function);
-//    function = OolongFunction(doubleType, "toDouble", arguments, context);
-//    importer->declareExternalFunction(function);
-//    function = OolongFunction(stringType, "toString", arguments, context);
-//    importer->declareExternalFunction(function);
-//
-//    // Integer conversion functions
-//    arguments.clear();
-//    arguments.push_back(integerType);
-//    function = OolongFunction(booleanType, "toBoolean", arguments, context);
-//    importer->declareExternalFunction(function);
-//    function = OolongFunction(doubleType, "toDouble", arguments, context);
-//    importer->declareExternalFunction(function);
-//    function = OolongFunction(stringType, "toString", arguments, context);
-//    importer->declareExternalFunction(function);
-//
-//    // Double conversion functions
-//    arguments.clear();
-//    arguments.push_back(doubleType);
-//    function = OolongFunction(booleanType, "toBoolean", arguments, context);
-//    importer->declareExternalFunction(function);
-//    function = OolongFunction(integerType, "toInteger", arguments, context);
-//    importer->declareExternalFunction(function);
-//    function = OolongFunction(stringType, "toString", arguments, context);
-//    importer->declareExternalFunction(function);
-//
-//    // String conversion functions
-//    arguments.clear();
-//    arguments.push_back(stringType);
-//    function = OolongFunction(booleanType, "toBoolean", arguments, context);
-//    importer->declareExternalFunction(function);
-//    function = OolongFunction(integerType, "toInteger", arguments, context);
-//    importer->declareExternalFunction(function);
-//    function = OolongFunction(doubleType, "toDouble", arguments, context);
-//    importer->declareExternalFunction(function);
-//
-//    // String Class
-//    arguments.clear();
-//    arguments.push_back(stringType);
-//    function = OolongFunction(booleanType, "toBoolean", arguments, context);
-//    importer->declareExternalFunction(function);
-//    function = OolongFunction(integerType, "toInteger", arguments, context);
-//    importer->declareExternalFunction(function);
-//    function = OolongFunction(doubleType, "toDouble", arguments, context);
-//    importer->declareExternalFunction(function);
-//}
-//
-//static void createIoFunctions(Importer* importer, CodeGenerationContext* context) {
-//    LLVMContext& llvmContext = context->getLLVMContext();
-//
-//    Type* voidType = Type::getVoidTy(llvmContext);
-//    Type* stringType = TypeConverter::getStringType(llvmContext);
-//
-//    // print String
-//    vector<Type*> arguments;
-//    arguments.push_back(Type::getInt8PtrTy(llvmContext));
-//    OolongFunction function(voidType, "io.print", arguments, context);
-//    importer->declareExternalFunction(function);
-//
-//    // print Integer
-//    arguments.clear();
-//    arguments.push_back(Type::getInt64Ty(llvmContext));
-//    function = OolongFunction(voidType, "io.print", arguments, context);
-//    importer->declareExternalFunction(function);
-//
-//    // print Double
-//    arguments.clear();
-//    arguments.push_back(Type::getDoubleTy(llvmContext));
-//    function = OolongFunction(voidType, "io.print", arguments, context);
-//    importer->declareExternalFunction(function);
-//
-//    // print Boolean
-//    arguments.clear();
-//    arguments.push_back(Type::getInt1Ty(llvmContext));
-//    function = OolongFunction(voidType, "io.print", arguments, context);
-//    importer->declareExternalFunction(function);
-//
-//    // printLine String
-//    arguments.clear();
-//    arguments.push_back(Type::getInt8PtrTy(llvmContext));
-//    function = OolongFunction(voidType, "io.printLine", arguments, context);
-//    importer->declareExternalFunction(function);
-//
-//    // printLine Integer
-//    arguments.clear();
-//    arguments.push_back(Type::getInt64Ty(llvmContext));
-//    function = OolongFunction(voidType, "io.printLine", arguments, context);
-//    importer->declareExternalFunction(function);
-//
-//    // printLine Double
-//    arguments.clear();
-//    arguments.push_back(Type::getDoubleTy(llvmContext));
-//    function = OolongFunction(voidType, "io.printLine", arguments, context);
-//    importer->declareExternalFunction(function);
-//
-//    // printLine Boolean
-//    arguments.clear();
-//    arguments.push_back(Type::getInt1Ty(llvmContext));
-//    function = OolongFunction(voidType, "io.printLine", arguments, context);
-//    importer->declareExternalFunction(function);
-//
-//    // readLine
-//    arguments.clear();
-//    function = OolongFunction(stringType, "io.readLine", arguments, context);
-//    importer->declareExternalFunction(function);
-//}
 

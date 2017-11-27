@@ -69,15 +69,35 @@ Value* StringNode::generateCode(CodeGenerationContext& context) {
     LLVMContext& llvmContext = context.getLLVMContext();
     auto stringConstant = ConstantDataArray::getString(llvmContext, value, true);
     Type* type = stringConstant->getType();
-    Constant *zero = Constant::getNullValue(IntegerType::getInt32Ty(llvmContext));
-    vector<llvm::Value*> indices;
-    indices.push_back(zero);
-    indices.push_back(zero);
     // make global reference to constant
     GlobalVariable *global = new GlobalVariable(*context.getModule(), type, true, GlobalValue::PrivateLinkage, stringConstant, ".str");
-    // get a pointer to the global constant
+    // get a pointer to the beginning of the global constant
+    Type* int32Type = IntegerType::getInt32Ty(llvmContext);
+    Constant *zero = ConstantInt::get(int32Type, 0);
+    vector<Value*> indices;
+    indices.push_back(zero);
+    indices.push_back(zero);
     GetElementPtrInst* pointer = GetElementPtrInst::CreateInBounds(type, global, makeArrayRef(indices), "", context.currentBlock());
-    return pointer;
+
+    // create String object
+    TypeConverter& typeConverter = context.getTypeConverter();
+    Type* stringType = typeConverter.getType("String");
+    Type* integerType = typeConverter.getIntegerType();
+
+    AllocaInst* object = new AllocaInst(stringType, 0, "", context.currentBlock());
+
+    auto stringValue = GetElementPtrInst::CreateInBounds(stringType, object, indices /*(0, 0)*/, "", context.currentBlock());
+    new StoreInst(pointer, stringValue, context.currentBlock());
+
+    indices[1] = ConstantInt::get(int32Type, 1);
+    auto stringAllocatedSize = GetElementPtrInst::Create(stringType, object, indices /*(0, 1)*/, "", context.currentBlock());
+    new StoreInst(ConstantInt::get(integerType, value.length()+1), stringAllocatedSize, context.currentBlock());
+
+    indices[1] = ConstantInt::get(int32Type, 2);
+    auto stringUsedSize = GetElementPtrInst::Create(stringType, object, indices /*(0, 2)*/, "", context.currentBlock());
+    new StoreInst(ConstantInt::get(integerType, value.length()), stringUsedSize, context.currentBlock());
+
+    return new LoadInst(object, "", false, context.currentBlock());
 }
 
 Value* IdentifierNode::generateCode(CodeGenerationContext& context) {
@@ -275,7 +295,7 @@ Value* VariableDeclarationNode::generateCode(CodeGenerationContext& context) {
         return error(context, "Redeclaration of variable " + id.name);
     }
     TypeConverter& typeConverter = context.getTypeConverter();
-    Type* identifierType = typeConverter.typeOf(type.name);
+    Type* identifierType = typeConverter.getType(type.name);
     AllocaInst *alloc = new AllocaInst(identifierType, 0 /* generic address space */, id.name, context.currentBlock());
     context.localScope()[id.name] = alloc;
     if (assignmentExpression != nullptr) {
@@ -291,10 +311,10 @@ Value* FunctionDeclarationNode::generateCode(CodeGenerationContext& context) {
     TypeConverter& typeConverter = context.getTypeConverter();
     vector<Type*> argumentTypes;
     for (VariableDeclarationNode* argument : arguments) {
-        argumentTypes.push_back(typeConverter.typeOf(argument->type.name));
+        argumentTypes.push_back(typeConverter.getType(argument->type.name));
     }
 
-    Type* returnType = typeConverter.typeOf(type.name);
+    Type* returnType = typeConverter.getType(type.name);
     OolongFunction oolongFunction(returnType, id.name, argumentTypes, &context);
     if (context.getImporter().findFunction(oolongFunction, true) != nullptr) {
         // exact match
@@ -347,11 +367,11 @@ Value* FunctionDeclarationNode::generateCode(CodeGenerationContext& context) {
 Value* ExternalFunctionDeclarationNode::generateCode(CodeGenerationContext& context) {
     TypeConverter& typeConverter = context.getTypeConverter();
 
-    Type* returnType = typeConverter.typeOf(type.name);
+    Type* returnType = typeConverter.getType(type.name);
 
     vector<Type*> argumentTypes;
     for (VariableDeclarationNode* argument : arguments) {
-        argumentTypes.push_back(typeConverter.typeOf(argument->type.name));
+        argumentTypes.push_back(typeConverter.getType(argument->type.name));
     }
 
     OolongFunction function(returnType, id.name, argumentTypes, &context);

@@ -15,6 +15,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+#include "oolong-module.h"
 #include <stdio.h>
 #include <stdbool.h>
 
@@ -34,8 +35,8 @@ void Void_0_io_1_print_2_Boolean(bool value) {
     printf(value ? "true" : "false");
 }
 
-void Void_0_io_1_printLine_2_String(const char* value) {
-    printf("%s\n", value);
+void Void_0_io_1_printLine_2_String(struct String value) {
+    printf("%s\n", value.value);
 }
 
 void Void_0_io_1_printLine_2_Integer(long long value) {
@@ -50,13 +51,19 @@ void Void_0_io_1_printLine_2_Boolean(bool value) {
     printf(value ? "true\n" : "false\n");
 }
 
-char* String_0_io_1_readLine() {
+struct String String_0_io_1_readLine() {
     char* line = NULL;
     size_t length = 0;
 
     ssize_t read = getline(&line, &length, stdin);
     // TODO: handle failed read
     // TODO: ensure line is freed
-    return line;
+
+    struct String lineString;
+    lineString.value = line;
+    lineString.allocatedSize = length;
+    lineString.usedSize = length-1; // account for null terminator
+
+    return lineString;
 }
 
