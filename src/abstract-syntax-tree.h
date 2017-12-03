@@ -43,7 +43,7 @@ public:
 
 class IntegerNode : public ExpressionNode {
 public:
-    IntegerNode(long long value) : value(value) {}
+    IntegerNode(int64_t value) : value(value) {}
 
     long long value;
 
@@ -131,9 +131,11 @@ public:
 
 class AssignmentNode : public StatementNode {
 public:
-    AssignmentNode(AssignableNode& leftHandSide, ExpressionNode& rightHandSide) : leftHandSide(leftHandSide), rightHandSide(rightHandSide) {}
+    AssignmentNode(llvm::Value* variable, ExpressionNode& rightHandSide) : variable(variable), rightHandSide(rightHandSide) {}
+    AssignmentNode(AssignableNode* leftHandSide, ExpressionNode& rightHandSide) : leftHandSide(leftHandSide), rightHandSide(rightHandSide) {}
 
-    AssignableNode& leftHandSide;
+    llvm::Value* variable;
+    AssignableNode* leftHandSide;
     ExpressionNode& rightHandSide;
 
     virtual llvm::Value* generateCode(CodeGenerationContext& context);

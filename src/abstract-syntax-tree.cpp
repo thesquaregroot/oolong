@@ -82,22 +82,32 @@ Value* StringNode::generateCode(CodeGenerationContext& context) {
     // create String object
     TypeConverter& typeConverter = context.getTypeConverter();
     Type* stringType = typeConverter.getType("String");
+    Type* stringValueType = stringType->getPointerElementType();
     Type* integerType = typeConverter.getIntegerType();
 
-    AllocaInst* object = new AllocaInst(stringType, 0, "", context.currentBlock());
+    AllocaInst* objectReference = new AllocaInst(stringValueType, 0, "literal", context.currentBlock());
 
-    auto stringValue = GetElementPtrInst::CreateInBounds(stringType, object, indices /*(0, 0)*/, "", context.currentBlock());
+    //vector<unsigned int> structIndex;
+    //structIndex.push_back(0);
+    //InsertValueInst::Create(object, pointer, makeArrayRef(structIndex), "value", context.currentBlock());
+
+    //structIndex[0] = 1;
+    //InsertValueInst::Create(object, ConstantInt::get(integerType, value.length()+1), makeArrayRef(structIndex), "allocatedSize", context.currentBlock());
+    //structIndex[0] = 2;
+    //InsertValueInst::Create(object, ConstantInt::get(integerType, value.length()), makeArrayRef(structIndex), "usedSize", context.currentBlock());
+
+    auto stringValue = GetElementPtrInst::Create(stringValueType, objectReference, indices /*(0, 0)*/, "value", context.currentBlock());
     new StoreInst(pointer, stringValue, context.currentBlock());
 
-    indices[1] = ConstantInt::get(int32Type, 1);
-    auto stringAllocatedSize = GetElementPtrInst::Create(stringType, object, indices /*(0, 1)*/, "", context.currentBlock());
+    indices[1] = ConstantInt::get(int32Type, 1); // (0, 1)
+    auto stringAllocatedSize = GetElementPtrInst::Create(stringValueType, objectReference, indices, "allocatedSize", context.currentBlock());
     new StoreInst(ConstantInt::get(integerType, value.length()+1), stringAllocatedSize, context.currentBlock());
 
-    indices[1] = ConstantInt::get(int32Type, 2);
-    auto stringUsedSize = GetElementPtrInst::Create(stringType, object, indices /*(0, 2)*/, "", context.currentBlock());
+    indices[1] = ConstantInt::get(int32Type, 2); // (0, 2)
+    auto stringUsedSize = GetElementPtrInst::Create(stringValueType, objectReference, indices, "usedSize", context.currentBlock());
     new StoreInst(ConstantInt::get(integerType, value.length()), stringUsedSize, context.currentBlock());
 
-    return new LoadInst(object, "", false, context.currentBlock());
+    return objectReference;
 }
 
 Value* IdentifierNode::generateCode(CodeGenerationContext& context) {
@@ -260,7 +270,9 @@ Value* AssignableNode::generateCode(CodeGenerationContext& context) {
 
 Value* AssignmentNode::generateCode(CodeGenerationContext& context) {
     Value* value = rightHandSide.generateCode(context);
-    Value* variable = leftHandSide.generateCode(context);
+    if (variable == nullptr) {
+        variable = leftHandSide->generateCode(context);
+    }
     new StoreInst(value, variable, false, context.currentBlock());
     // return stored value
     return value;
@@ -299,8 +311,7 @@ Value* VariableDeclarationNode::generateCode(CodeGenerationContext& context) {
     AllocaInst *alloc = new AllocaInst(identifierType, 0 /* generic address space */, id.name, context.currentBlock());
     context.localScope()[id.name] = alloc;
     if (assignmentExpression != nullptr) {
-        AssignableNode* assignable = new AssignableNode(id);
-        AssignmentNode assignmentNode(*assignable, *assignmentExpression);
+        AssignmentNode assignmentNode(alloc, *assignmentExpression);
         assignmentNode.generateCode(context);
     }
     return alloc;
@@ -562,9 +573,11 @@ Value* IncrementExpressionNode::generateCode(CodeGenerationContext& context) {
     }
     IntegerNode* one = new IntegerNode(1);
     BinaryOperatorNode* add = new BinaryOperatorNode(*variableReference, TOKEN_PLUS, *one);
-    AssignmentNode store(assignable, *add);
+    Value* incrementedValue = add->generateCode(context);
 
-    Value* incrementedValue = store.generateCode(context);
+    Value* variable = assignable.generateCode(context);
+    new StoreInst(incrementedValue, variable, false, context.currentBlock());
+
     if (postfix) {
         // return original value
         return originalValue;
@@ -584,17 +597,19 @@ Value* DecrementExpressionNode::generateCode(CodeGenerationContext& context) {
         originalValue = variableReference->generateCode(context);
     }
     IntegerNode* one = new IntegerNode(1);
-    BinaryOperatorNode* add = new BinaryOperatorNode(*variableReference, TOKEN_MINUS, *one);
-    AssignmentNode store(assignable, *add);
+    BinaryOperatorNode* subtract = new BinaryOperatorNode(*variableReference, TOKEN_MINUS, *one);
+    Value* decrementedValue = subtract->generateCode(context);
 
-    Value* incrementedValue = store.generateCode(context);
+    Value* variable = assignable.generateCode(context);
+    new StoreInst(decrementedValue, variable, false, context.currentBlock());
+
     if (postfix) {
         // return original value
         return originalValue;
     }
     else {
         // prefix, return incremented value
-        return incrementedValue;
+        return decrementedValue;
     }
 }
 

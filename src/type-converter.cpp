@@ -69,7 +69,8 @@ Type* TypeConverter::getType(const string& name) {
         error(*context, "Unable to find type with name: " + name);
         return nullptr;
     }
-    return types[name];
+    Type* type = types[name];
+    return type;
 }
 
 /* Build a string that represents the provided type */
@@ -89,9 +90,16 @@ string TypeConverter::getTypeName(Type* type) {
                                                     default: return "Integer[" + to_string(integerType->getBitWidth()) + "]";
                                                 }
                                             } break;
-        case Type::TypeID::ArrayTyID:       return "Array<" + getTypeName(type->getArrayElementType()) + ">";
+        case Type::TypeID::ArrayTyID:       {
+                                                // TODO: determine external behavior
+                                                return "Array<" + getTypeName(type->getArrayElementType()) + ">";
+                                            }
         case Type::TypeID::PointerTyID:     {
                                                 Type* pointerElementType = type->getPointerElementType();
+                                                if (pointerElementType->isStructTy()) {
+                                                    // always use pointers for structs, no need to put in name
+                                                    return getTypeName(pointerElementType);
+                                                }
                                                 return "Pointer<" + getTypeName(pointerElementType) + ">";
                                             }
         case Type::TypeID::StructTyID:      return type->getStructName().str();
@@ -151,8 +159,9 @@ Value* TypeConverter::convertType(Value* value, Type* targetType) {
 }
 
 StructType* TypeConverter::createType(ArrayRef<Type*> members, const string& name) {
-    StructType* newType = StructType::create(context->getLLVMContext(), members, name);
-    types[name] = newType;
+    StructType* newType = StructType::create(context->getLLVMContext(), members, name, true);
+    // use pointer to the struct as the type (i.e. reference types)
+    types[name] = newType->getPointerTo();
     return newType;
 }
 

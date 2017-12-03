@@ -225,37 +225,37 @@ assignment_statement : variable_declaration TOKEN_EQUALS expression
                         }
                      | assignable TOKEN_EQUALS expression
                         {
-                            $$ = new AssignmentNode(*$1, *$3);
+                            $$ = new AssignmentNode($1, *$3);
                         }
                      | assignable TOKEN_ADD_ASSIGN expression
                         {
                             auto variableReference = new ReferenceNode(*$1);
                             auto calculation = new BinaryOperatorNode(*variableReference, (int)TOKEN_PLUS, *$3);
-                            $$ = new AssignmentNode(*$1, *calculation);
+                            $$ = new AssignmentNode($1, *calculation);
                         }
                      | assignable TOKEN_SUBTRACT_ASSIGN expression
                         {
                             auto variableReference = new ReferenceNode(*$1);
                             auto calculation = new BinaryOperatorNode(*variableReference, (int)TOKEN_MINUS, *$3);
-                            $$ = new AssignmentNode(*$1, *calculation);
+                            $$ = new AssignmentNode($1, *calculation);
                         }
                      | assignable TOKEN_MULTIPLY_ASSIGN expression
                         {
                             auto variableReference = new ReferenceNode(*$1);
                             auto calculation = new BinaryOperatorNode(*variableReference, (int)TOKEN_MULTIPLY, *$3);
-                            $$ = new AssignmentNode(*$1, *calculation);
+                            $$ = new AssignmentNode($1, *calculation);
                         }
                      | assignable TOKEN_DIVIDE_ASSIGN expression
                         {
                             auto variableReference = new ReferenceNode(*$1);
                             auto calculation = new BinaryOperatorNode(*variableReference, (int)TOKEN_DIVIDE, *$3);
-                            $$ = new AssignmentNode(*$1, *calculation);
+                            $$ = new AssignmentNode($1, *calculation);
                         }
                      | assignable TOKEN_MODULO_ASSIGN expression
                         {
                             auto variableReference = new ReferenceNode(*$1);
                             auto calculation = new BinaryOperatorNode(*variableReference, (int)TOKEN_PERCENT, *$3);
-                            $$ = new AssignmentNode(*$1, *calculation);
+                            $$ = new AssignmentNode($1, *calculation);
                         }
                      ;
 

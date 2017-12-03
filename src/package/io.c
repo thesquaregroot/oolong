@@ -17,14 +17,15 @@
 
 #include "oolong-module.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdbool.h>
 
-void Void_0_io_1_print_2_String(const char* value) {
-    printf("%s", value);
+void Void_0_io_1_print_2_String(struct String* value) {
+    printf("%s", value->value);
 }
 
-void Void_0_io_1_print_2_Integer(long long value) {
-    printf("%d", value);
+void Void_0_io_1_print_2_Integer(int64_t value) {
+    printf("%ld", value);
 }
 
 void Void_0_io_1_print_2_Double(double value) {
@@ -35,12 +36,12 @@ void Void_0_io_1_print_2_Boolean(bool value) {
     printf(value ? "true" : "false");
 }
 
-void Void_0_io_1_printLine_2_String(struct String value) {
-    printf("%s\n", value.value);
+void Void_0_io_1_printLine_2_String(struct String* value) {
+    printf("%s\n", value->value);
 }
 
-void Void_0_io_1_printLine_2_Integer(long long value) {
-    printf("%d\n", value);
+void Void_0_io_1_printLine_2_Integer(int64_t value) {
+    printf("%ld\n", value);
 }
 
 void Void_0_io_1_printLine_2_Double(double value) {
@@ -51,7 +52,7 @@ void Void_0_io_1_printLine_2_Boolean(bool value) {
     printf(value ? "true\n" : "false\n");
 }
 
-struct String String_0_io_1_readLine() {
+struct String* String_0_io_1_readLine() {
     char* line = NULL;
     size_t length = 0;
 
@@ -59,10 +60,11 @@ struct String String_0_io_1_readLine() {
     // TODO: handle failed read
     // TODO: ensure line is freed
 
-    struct String lineString;
-    lineString.value = line;
-    lineString.allocatedSize = length;
-    lineString.usedSize = length-1; // account for null terminator
+    struct String* lineString = malloc(sizeof(struct String));
+    // TODO: determine how to handle failed malloc
+    lineString->value = line;
+    lineString->allocatedSize = read+1; // account for null terminator
+    lineString->usedSize = read;
 
     return lineString;
 }
