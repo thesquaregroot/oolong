@@ -45,8 +45,7 @@
 using namespace std;
 using namespace llvm;
 
-CodeGenerationContext::CodeGenerationContext(const string& unitName) : typeConverter(this), importer(this) {
-    llvmContext = new LLVMContext();
+CodeGenerationContext::CodeGenerationContext(const string& unitName) : llvmContext(new LLVMContext()), typeConverter(this), importer(this) {
     module = new Module(unitName, *llvmContext);
 }
 

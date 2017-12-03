@@ -32,6 +32,9 @@
 using namespace std;
 using namespace llvm;
 
+Type* TypeConverter::getVoidType(LLVMContext& llvmContext) {
+    return Type::getVoidTy(llvmContext);
+}
 
 Type* TypeConverter::getBooleanType(LLVMContext& llvmContext) {
     return Type::getInt1Ty(llvmContext);
@@ -45,8 +48,8 @@ Type* TypeConverter::getDoubleType(LLVMContext& llvmContext) {
     return Type::getDoubleTy(llvmContext);
 }
 
-Type* TypeConverter::getStringType(LLVMContext& llvmContext) {
-    return Type::getInt8PtrTy(llvmContext);
+Type* TypeConverter::getVoidType() {
+    return TypeConverter::getVoidType(context->getLLVMContext());
 }
 
 Type* TypeConverter::getBooleanType() {
@@ -61,29 +64,13 @@ Type* TypeConverter::getDoubleType() {
     return TypeConverter::getDoubleType(context->getLLVMContext());
 }
 
-Type* TypeConverter::getStringType() {
-    return TypeConverter::getStringType(context->getLLVMContext());
-}
-
-/* Returns an LLVM type based on the identifier */
-Type* TypeConverter::typeOf(const string& name) {
-    LLVMContext& llvmContext = context->getLLVMContext();
-    if (name == "Boolean") {
-        return getBooleanType(llvmContext);
+Type* TypeConverter::getType(const string& name) {
+    if (types.find(name) == types.end()) {
+        error(*context, "Unable to find type with name: " + name);
+        return nullptr;
     }
-    else if (name == "Integer") {
-        return getIntegerType(llvmContext);
-    }
-    else if (name == "Double") {
-        return getDoubleType(llvmContext);
-    }
-    else if (name == "String") {
-        return getStringType(llvmContext);
-    }
-    else if (name == "Void") {
-        return Type::getVoidTy(llvmContext);
-    }
-    return nullptr;
+    Type* type = types[name];
+    return type;
 }
 
 /* Build a string that represents the provided type */
@@ -103,11 +90,15 @@ string TypeConverter::getTypeName(Type* type) {
                                                     default: return "Integer[" + to_string(integerType->getBitWidth()) + "]";
                                                 }
                                             } break;
-        case Type::TypeID::ArrayTyID:       return "Array<" + getTypeName(type->getArrayElementType()) + ">";
+        case Type::TypeID::ArrayTyID:       {
+                                                // TODO: determine external behavior
+                                                return "Array<" + getTypeName(type->getArrayElementType()) + ">";
+                                            }
         case Type::TypeID::PointerTyID:     {
                                                 Type* pointerElementType = type->getPointerElementType();
-                                                if (pointerElementType->isIntegerTy(8)) {
-                                                    return "String";
+                                                if (pointerElementType->isStructTy()) {
+                                                    // always use pointers for structs, no need to put in name
+                                                    return getTypeName(pointerElementType);
                                                 }
                                                 return "Pointer<" + getTypeName(pointerElementType) + ">";
                                             }
@@ -165,5 +156,12 @@ Value* TypeConverter::convertType(Value* value, Type* targetType) {
     }
 
     return error(*context, "No valid conversion found for " + getTypeName(valueType) + " to " + getTypeName(targetType));
+}
+
+StructType* TypeConverter::createType(ArrayRef<Type*> members, const string& name) {
+    StructType* newType = StructType::create(context->getLLVMContext(), members, name, true);
+    // use pointer to the struct as the type (i.e. reference types)
+    types[name] = newType->getPointerTo();
+    return newType;
 }
 

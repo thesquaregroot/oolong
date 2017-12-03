@@ -36,6 +36,7 @@ add_library(packages STATIC ${PKG_SRCS})
 set_target_properties(packages PROPERTIES ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib/)
 
 ### Oolong ###
+set(CMAKE_C_FLAGS "-O3 -pipe -fPIC -Wall")
 set(CMAKE_CXX_FLAGS "-std=c++11 -O3 -pipe -fstack-protector-strong -fPIC -fvisibility-inlines-hidden -Werror=date-time -Wall -W -Wno-unused-parameter -Wwrite-strings -Wcast-qual -Wno-missing-field-initializers -pedantic -Wno-long-long -Wno-maybe-uninitialized -Wdelete-non-virtual-dtor -Wno-comment -ffunction-sections -fdata-sections -DNDEBUG -fno-exceptions")
 add_executable(oolong ${SRCS} ${BISON_parser_OUTPUTS} ${FLEX_tokens_OUTPUTS})
 
