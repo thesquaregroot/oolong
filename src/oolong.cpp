@@ -24,8 +24,9 @@
 #include <vector>
 #include <string>
 #include <cstdio>
-#include <stdio.h>
-#include <stdlib.h>
+#include <cctype>
+#include <cstdio>
+#include <cstdlib>
 #include <unistd.h>
 
 using namespace std;
@@ -42,40 +43,45 @@ extern BlockNode* programNode;
 const char* currentParseFile = nullptr;
 
 static void printVersion() {
-    cout << "Oolong, version " << OOLONG_MAJOR_VERSION << "." << OOLONG_MINOR_VERSION << endl;
-    cout << endl;
-    cout << "Copyright (C) 2017  Andrew Groot" << endl;
-    cout << "This program comes with ABSOLUTELY NO WARRANTY." << endl;
-    cout << "This is free software, and you are welcome to redistribute it" << endl;
-    cout << "under certain conditions.  Type `oolong --license' for details." << endl;
+    cout << "Oolong, version " << OOLONG_MAJOR_VERSION << "." << OOLONG_MINOR_VERSION << '\n'
+         << '\n'
+         << "Copyright (C) 2017  Andrew Groot\n"
+         << "This program comes with ABSOLUTELY NO WARRANTY.\n"
+         << "This is free software, and you are welcome to redistribute it\n"
+         << "under certain conditions.  Type `oolong --license' for details." << endl;
 }
 
 static void printLicense() {
-    cout << "Oolong - A compiler for the Oolong programming language." << endl;
-    cout << "Copyright (C) 2017  Andrew Groot" << endl;
-    cout << endl;
-    cout << "===========================================================================" << endl;
-    cout << endl;
-    cout << OOLONG_LICENSE << endl;
+    cout << "Oolong - A compiler for the Oolong programming language.\n"
+         << "Copyright (C) 2017  Andrew Groot\n"
+         << '\n'
+         << "===========================================================================\n"
+         << '\n'
+         << OOLONG_LICENSE << endl;
 }
 
 static void printUsage() {
     printVersion();
-    cout << endl;
-    cout << "   oolong <options>                    Read from stdin." << endl;
-    cout << "   oolong <options> <input-files>      Read <input-files>." << endl;
-    cout << endl;
-    cout << "Options" << endl;
-    cout << "   --version                   Print version information." << endl;
-    cout << "   --license                   Print license information." << endl;
-    cout << "   -h, --help                  Print this information." << endl;
-    cout << "   -d, --debug                 Enable debug output." << endl;
-    cout << "   -b, --bison-debug           Enable bison debug output." << endl;
-    cout << "   -l, --emit-llvm             Do not link, output LLVM IR." << endl;
-    cout << "   -e, --execute               Do not create any artifacts, execute code directly." << endl;
-    cout << "   -c, --compile-only          Do not link, output object files." << endl;
-    cout << "   -o, --output-file <file>    Set output file name." << endl;
-    cout << endl;
+    cout << '\n'
+         << "   oolong <options>                    Read from stdin.\n"
+         << "   oolong <options> <input-files>      Read <input-files>.\n"
+         << '\n'
+         << "Options\n"
+         << "   --version                   Print version information.\n"
+         << "   --license                   Print license information.\n"
+         << "   -h, --help                  Print this information.\n"
+         << "   -d, --debug                 Enable debug output.\n"
+         << "   -b, --bison-debug           Enable bison debug output.\n"
+         << "   -l, --emit-llvm             Do not link, output LLVM IR.\n"
+         << "   -e, --execute               Do not create any artifacts, execute code directly.\n"
+         << "   -c, --compile-only          Do not link, output object files.\n"
+         << "   -o, --output-file <file>    Set output file name.\n"
+         << "   -O[N]                       Optimize output. N:\n"
+         << "                                   0 -> No optimization.\n"
+         << "                                   1 -> Run few optimizations for a quicker compile time.\n"
+         << "                                   2 -> Run most optimizations. (default)\n"
+         << "                                   3 -> Run even optimizations that may be very slow.\n"
+         << endl;
 }
 
 static bool match(const string& argument, const char* shortOption, const char* longOption) {
@@ -129,6 +135,7 @@ int main(int argc, char **argv) {
     bool emitLlvm = false;
     bool execute = false;
     bool link = true;
+    int optimizationLevel = 2;
     string outputFile = DEFAULT_OUTPUT_FILE;
     vector<string> inputFiles;
 
@@ -167,12 +174,21 @@ int main(int argc, char **argv) {
         else if (match(argument, "-o", "--output-file")) {
             // next argument is output file name
             if (++i >= argc) {
-                cerr << "Output file not specified.";
+                cerr << "Output file not specified." << endl;
                 return 1;
             }
             outputFile = string(argv[i]);
         }
         else {
+            if (argument.find("-O") == 0) {
+                if (argument.length() != 3 || !isdigit(argument[2])) {
+                    cerr << "Invalid optimizer setting." << endl;
+                    return 1;
+                }
+                // optimization setting
+                optimizationLevel = (argument[2] - '0'); // convert digit to int
+                continue;
+            }
             // assume input file name
             inputFiles.push_back(argument);
         }
@@ -279,6 +295,7 @@ int main(int argc, char **argv) {
         CodeGenerationContext context(moduleName);
         context.setEmitLlvm(emitLlvm);
         context.setOutputName(outputName);
+        context.setOptimizationLevel(optimizationLevel);
         int returnValue = context.generateCode(*programNode);
         if (returnValue > 0) {
             // unable to generate code, bail out
