@@ -31,6 +31,7 @@
 #include <llvm/IR/IRPrintingPasses.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Verifier.h>
+#include <llvm/IR/PassManager.h>
 #include <llvm/Bitcode/BitcodeReader.h>
 #include <llvm/Bitcode/BitcodeWriter.h>
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
@@ -41,6 +42,8 @@
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Target/TargetOptions.h"
+#include "llvm/Transforms/IPO.h"
+#include "llvm/Transforms/IPO/PassManagerBuilder.h"
 
 using namespace std;
 using namespace llvm;
@@ -57,16 +60,43 @@ void CodeGenerationContext::setOutputName(const string& value) {
     outputName = value;
 }
 
-// Compile the AST into a module
-int CodeGenerationContext::generateCode(BlockNode& root) {
+void CodeGenerationContext::setOptimizationLevel(int level) {
+    optimizationLevel = level;
+}
+
+int CodeGenerationContext::importStandardLibrary() {
     // load standard library and auto-import default package
     // TODO: determine archive path some other / allow overriding it
     importer.loadStandardLibrary("lib/libpackages.a");
     importer.importPackage("");
 
-    root.generateCode(*this);
+    return 0;
+}
 
-    // save IR
+int CodeGenerationContext::optimizeModule() {
+    if (optimizationLevel == 0) {
+        // nothing to do
+        return 0;
+    }
+
+    legacy::PassManager* passManager = new legacy::PassManager();
+    int sizeLevel = 0;
+    PassManagerBuilder passManagerBuilder;
+    passManagerBuilder.OptLevel = optimizationLevel;
+    passManagerBuilder.SizeLevel = sizeLevel;
+    passManagerBuilder.Inliner = createFunctionInliningPass(optimizationLevel, sizeLevel, true);
+    passManagerBuilder.DisableUnitAtATime = false;
+    passManagerBuilder.DisableUnrollLoops = false;
+    passManagerBuilder.LoopVectorize = true;
+    passManagerBuilder.SLPVectorize = true;
+    passManagerBuilder.populateModulePassManager(*passManager);
+    passManager->run(*module);
+
+    return 0;
+}
+
+
+int CodeGenerationContext::emitIntermediateRepresentation() {
     std::string intermediateRepresentation;
     raw_string_ostream output(intermediateRepresentation);
     module->print(output, nullptr);
@@ -82,13 +112,19 @@ int CodeGenerationContext::generateCode(BlockNode& root) {
             outputFile.close();
         }
     }
+    return 0;
+}
 
+int CodeGenerationContext::checkModule() {
     // verify module
-    if (/*int errorCode = */verifyModule(*module, &errs())) {
-        //errs() << "Invalid module, bailing out.\n";
-        //return errorCode;
+    if (int errorCode = verifyModule(*module, &errs())) {
+        errs() << "Invalid module, bailing out.\n";
+        return errorCode;
     }
+    return 0;
+}
 
+int CodeGenerationContext::emitMachineCode() {
     // Initialize the target registry etc.
     InitializeAllTargetInfos();
     InitializeAllTargets();
@@ -132,6 +168,29 @@ int CodeGenerationContext::generateCode(BlockNode& root) {
 
     pass.run(*module);
     dest.flush();
+    return 0;
+}
+
+// Compile the AST into a module
+int CodeGenerationContext::generateCode(BlockNode& root) {
+    if (int errorCode = importStandardLibrary()) {
+        return errorCode;
+    }
+
+    root.generateCode(*this);
+
+    if (int errorCode = optimizeModule()) {
+        return errorCode;
+    }
+    if (int errorCode = emitIntermediateRepresentation()) {
+        return errorCode;
+    }
+    if (int errorCode = checkModule()) {
+        return errorCode;
+    }
+    if (int errorCode = emitMachineCode()) {
+        return errorCode;
+    }
 
     return 0;
 }

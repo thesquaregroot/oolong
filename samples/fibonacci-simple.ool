@@ -10,8 +10,8 @@ function fibonacci(n: Integer) : Integer {
 }
 
 function main() : Integer {
-    io.print("The tenth fibonacci number is: ");
-    io.printLine(fibonacci(10));
+    io.print("The 50th fibonacci number is: ");
+    io.printLine(fibonacci(50));
     return 0;
 }
 

@@ -29,6 +29,8 @@ class CodeGenerationContext {
 private:
     bool emitLlvm = false;
     std::string outputName;
+    int optimizationLevel = 2;
+
     llvm::LLVMContext *llvmContext;
     llvm::Module *module;
     std::deque<CodeGenerationBlock*> blocks; // deque instead of stack to allow or iteration
@@ -36,11 +38,18 @@ private:
     TypeConverter typeConverter;
     Importer importer;
 
+    int importStandardLibrary();
+    int optimizeModule();
+    int emitIntermediateRepresentation();
+    int checkModule();
+    int emitMachineCode();
+
 public:
     CodeGenerationContext(const std::string& unitName);
 
     void setEmitLlvm(bool value);
     void setOutputName(const std::string& value);
+    void setOptimizationLevel(int optimizationLevel);
 
     int generateCode(BlockNode& root);
     llvm::GenericValue runCode();
