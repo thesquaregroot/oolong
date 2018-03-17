@@ -194,6 +194,10 @@ void Importer::loadStandardLibrary(const string& archiveLocation) {
     Archive* packageArchive = expectedPackageArchive.get().get();
     for (auto symbol : packageArchive->symbols()) {
         string functionName = symbol.getName().str();
+        // remove possible underscore prefix, added on some platforms
+        if (functionName[0] == '_') {
+            functionName.erase(0, 1);
+        }
         OolongFunction function = convertExternalFunctionToOolongFunction(functionName, context);
         packages[function.getPackageName()].push_back(function);
     }
