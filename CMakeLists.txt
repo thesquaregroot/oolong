@@ -24,7 +24,7 @@ flex_target(tokens ${SRC_DIR}/tokens.l ${SRC_DIR}/tokens.cpp COMPILE_FLAGS "--he
 add_flex_bison_dependency(tokens parser)
 
 ### llvm (find) ###
-find_package(LLVM "5.0" REQUIRED CONFIG)
+find_package(LLVM REQUIRED CONFIG)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 
