@@ -208,7 +208,8 @@ Value* BinaryOperatorNode::generateCode(CodeGenerationContext& context) {
         case TOKEN_LESS_THAN_OR_EQUAL_TO:       { predicate = isInteger ? CmpInst::Predicate::ICMP_SLE : CmpInst::Predicate::FCMP_OLE; isBinary = false; } break;
 
         default: {
-            return error(context, "Unimplemented operation: " + operation);
+            // shouldn't happen, but just in case
+            return error(context, "Unimplemented operation: " + to_string(operation));
         }
     }
     if (isBinary) {
@@ -252,7 +253,8 @@ Value* UnaryOperatorNode::generateCode(CodeGenerationContext& context) {
         } break;
 
         default: {
-            return error(context, "Unimplemented operation: " + operation);
+            // shouldn't happen, but just in case
+            return error(context, "Unimplemented operation: " + to_string(operation));
         }
     }
 

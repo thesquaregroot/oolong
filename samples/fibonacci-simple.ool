@@ -1,7 +1,7 @@
 import io;
 
 function fibonacci(n: Integer) : Integer {
-    if (n <= 1) {
+    if (n <= 2) {
         return 1;
     }
     else {

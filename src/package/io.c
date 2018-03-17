@@ -16,6 +16,10 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "oolong-module.h"
+#ifndef __STDC_FORMAT_MACROS
+#define __STDC_FORMAT_MACROS
+#endif
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -25,7 +29,7 @@ void Void_0_io_1_print_2_String(struct String* value) {
 }
 
 void Void_0_io_1_print_2_Integer(int64_t value) {
-    printf("%ld", value);
+    printf("%" PRId64, value);
 }
 
 void Void_0_io_1_print_2_Double(double value) {
@@ -41,7 +45,7 @@ void Void_0_io_1_printLine_2_String(struct String* value) {
 }
 
 void Void_0_io_1_printLine_2_Integer(int64_t value) {
-    printf("%ld\n", value);
+    printf("%" PRId64 "\n", value);
 }
 
 void Void_0_io_1_printLine_2_Double(double value) {

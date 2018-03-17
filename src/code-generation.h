@@ -11,7 +11,7 @@ namespace llvm {
     class LLVMContext;
     class Module;
     class Function;
-    class GenericValue;
+    struct GenericValue;
     class Value;
 }
 

@@ -221,7 +221,7 @@ map<string, Value*> CodeGenerationContext::fullScope() {
         blockIterator++;
     }
 
-    return std::move(scope);
+    return scope;
 }
 
 BasicBlock* CodeGenerationContext::currentBlock() {
