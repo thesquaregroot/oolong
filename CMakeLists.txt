@@ -42,13 +42,6 @@ set(CMAKE_C_FLAGS "-O3 -pipe -fPIC -Wall")
 set(CMAKE_CXX_FLAGS "-std=c++11 -O3 -pipe -fstack-protector-strong -fPIC -fvisibility-inlines-hidden -Werror=date-time -Wall -W -Wno-unused-parameter -Wwrite-strings -Wcast-qual -Wno-missing-field-initializers -pedantic -Wno-long-long -Wdelete-non-virtual-dtor -Wno-comment -ffunction-sections -fdata-sections -DNDEBUG -fno-exceptions")
 add_executable(oolong ${SRCS} ${BISON_parser_OUTPUTS} ${FLEX_tokens_OUTPUTS})
 
-### LLVM (add flags) ###
-if(UNIX AND NOT APPLE)
-    # will probably need updated later on
-    # seems like a conflict between LLVM and ncurses
-    # also unsure of how portable this is to other distros
-    target_link_libraries(oolong LLVM-5.0)
-endif()
 set(COMPONENT_LIST all)
 llvm_map_components_to_libnames(LLVM_LIBS ${COMPONENT_LIST})
 
